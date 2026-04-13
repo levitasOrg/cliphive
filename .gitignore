@@ -1,0 +1,40 @@
+## Visual Studio / .NET
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+## Coverage & Test output
+coverage/
+TestResults/
+*.trx
+
+## Build artifacts / distribution
+dist/
+publish/
+*.nupkg
+
+## Installer output
+installer/Output/
+
+## IDE
+.idea/
+.vscode/settings.json
+*.DotSettings.user
+
+## OS
+Thumbs.db
+.DS_Store
+
+## Secrets / Environment
+*.env
+*.env.local
+appsettings.Development.json
+
+## Temp files created by orchestrator bootstrap
+install_dotnet.ps1
+dotnet.sh

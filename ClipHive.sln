@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B2FB0B74-F733-4057-AC21-0BB29250FDB9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClipHive", "src\ClipHive\ClipHive.csproj", "{F74B48AF-1F42-4EF0-9E28-FA8A02B493CB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{59AF755F-ED4E-434D-9846-024E87CD982A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClipHive.Tests", "tests\ClipHive.Tests\ClipHive.Tests.csproj", "{0F554025-0BCB-434C-BDCA-31AF54597BED}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F74B48AF-1F42-4EF0-9E28-FA8A02B493CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F74B48AF-1F42-4EF0-9E28-FA8A02B493CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F74B48AF-1F42-4EF0-9E28-FA8A02B493CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F74B48AF-1F42-4EF0-9E28-FA8A02B493CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F554025-0BCB-434C-BDCA-31AF54597BED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F554025-0BCB-434C-BDCA-31AF54597BED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F554025-0BCB-434C-BDCA-31AF54597BED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F554025-0BCB-434C-BDCA-31AF54597BED}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F74B48AF-1F42-4EF0-9E28-FA8A02B493CB} = {B2FB0B74-F733-4057-AC21-0BB29250FDB9}
+		{0F554025-0BCB-434C-BDCA-31AF54597BED} = {59AF755F-ED4E-434D-9846-024E87CD982A}
+	EndGlobalSection
+EndGlobal
