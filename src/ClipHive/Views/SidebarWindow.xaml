@@ -61,6 +61,8 @@
                 <RowDefinition Height="Auto" />
                 <!-- Item list -->
                 <RowDefinition Height="*" />
+                <!-- Credit -->
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- ── Search Bar ──────────────────────────────────────── -->
@@ -209,6 +211,15 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+            <!-- ── Credit ──────────────────────────────────────────── -->
+            <TextBlock Grid.Row="3"
+                       Text="crafted by gmv ♥"
+                       FontFamily="Segoe UI"
+                       FontSize="10"
+                       FontStyle="Italic"
+                       Foreground="#3D2A52"
+                       HorizontalAlignment="Right"
+                       Margin="0,2,10,6" />
         </Grid>
     </Border>
 </Window>
