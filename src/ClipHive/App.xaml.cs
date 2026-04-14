@@ -107,6 +107,15 @@ public partial class App : System.Windows.Application
         contextMenu.Items.Add("Settings",          null, (_, _) => OpenSettings());
         contextMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
         contextMenu.Items.Add("Exit",              null, (_, _) => ExitApp());
+        contextMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
+        var credit = new System.Windows.Forms.ToolStripMenuItem("crafted by gmv ♥")
+        {
+            Enabled   = false,
+            ForeColor = System.Drawing.Color.FromArgb(160, 120, 200),
+            Font      = new System.Drawing.Font("Segoe UI", 8f, System.Drawing.FontStyle.Italic),
+        };
+        contextMenu.Items.Add(credit);
 
         _trayIcon = new System.Windows.Forms.NotifyIcon
         {
