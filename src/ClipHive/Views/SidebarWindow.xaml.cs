@@ -1,6 +1,8 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using ClipHive.ViewModels;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
@@ -9,12 +11,20 @@ namespace ClipHive.Views;
 /// <summary>
 /// Code-behind for the dark overlay sidebar window.
 /// All business logic lives in <see cref="SidebarViewModel"/>;
-/// this file handles only keyboard navigation and window lifecycle.
+/// this file handles keyboard navigation, window lifecycle, and click-outside dismissal.
 /// </summary>
 public partial class SidebarWindow : Window
 {
     private SidebarViewModel? _viewModel;
     private bool _closing;
+
+    // Guard: don't close on deactivation until the window is fully shown.
+    // Without this, the hotkey keypress itself can deactivate the window immediately.
+    private bool _isReady;
+
+    // Win32 message constants
+    private const int WM_ACTIVATEAPP = 0x001C;
+    private const int WM_NCACTIVATE  = 0x0086;
 
     public SidebarWindow()
     {
@@ -35,30 +45,60 @@ public partial class SidebarWindow : Window
             _viewModel.CloseRequested += OnCloseRequested;
     }
 
-    private void OnCloseRequested(object? sender, EventArgs e)
-    {
-        _closing = true;
-        Close();
-    }
+    private void OnCloseRequested(object? sender, EventArgs e) => DismissWindow();
 
     // ── Window Lifecycle ──────────────────────────────────────────────────────
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    protected override void OnSourceInitialized(EventArgs e)
     {
-        // Auto-focus the search box so the user can start typing immediately.
-        SearchBox.Focus();
-        Keyboard.Focus(SearchBox);
+        base.OnSourceInitialized(e);
+
+        // Hook Win32 messages on the window's HWND.
+        // WPF's Deactivated event is unreliable for WindowStyle=None windows when
+        // clicking the desktop, taskbar, or other apps — WM_NCACTIVATE is authoritative.
+        var src = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+        src?.AddHook(WndProc);
     }
 
-    private void Window_Deactivated(object sender, EventArgs e)
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam,
+                           IntPtr lParam, ref bool handled)
     {
-        // Close the window whenever it loses focus (click elsewhere, Alt+Tab, etc.).
-        // Guard against re-entrant Close() — Deactivated fires again while closing.
-        if (!_closing)
+        if (!_isReady) return IntPtr.Zero;
+
+        switch (msg)
         {
-            _closing = true;
-            Close();
+            // WM_NCACTIVATE wParam=0  → this window is being deactivated
+            case WM_NCACTIVATE when wParam == IntPtr.Zero:
+            // WM_ACTIVATEAPP wParam=0 → another app is taking focus
+            case WM_ACTIVATEAPP when wParam == IntPtr.Zero:
+                DismissWindow();
+                break;
         }
+
+        return IntPtr.Zero;
+    }
+
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        SearchBox.Focus();
+        Keyboard.Focus(SearchBox);
+
+        // Enable deactivation-close only after the dispatcher has fully rendered
+        // the window. This prevents the hotkey's own keypress from immediately
+        // deactivating the window before the user sees it.
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Input,
+            new Action(() => _isReady = true));
+    }
+
+    // Keep Deactivated as a secondary safety net for edge cases the WndProc misses.
+    private void Window_Deactivated(object sender, EventArgs e) => DismissWindow();
+
+    private void DismissWindow()
+    {
+        if (_closing) return;
+        _closing = true;
+        Close();
     }
 
     // ── Keyboard Navigation ───────────────────────────────────────────────────
@@ -68,7 +108,7 @@ public partial class SidebarWindow : Window
         switch (e.Key)
         {
             case Key.Escape:
-                Close();
+                DismissWindow();
                 e.Handled = true;
                 break;
 
@@ -108,25 +148,14 @@ public partial class SidebarWindow : Window
         if (items.Count == 0) return;
 
         var current = _viewModel.SelectedItem;
-        int index;
-        if (current is null)
+        int index = -1;
+        for (int i = 0; i < items.Count; i++)
         {
-            index = -1;
-        }
-        else
-        {
-            index = -1;
-            for (int i = 0; i < items.Count; i++)
-            {
-                if (ReferenceEquals(items[i], current)) { index = i; break; }
-            }
+            if (ReferenceEquals(items[i], current)) { index = i; break; }
         }
 
-        // Clamp to valid range.
         var newIndex = Math.Clamp(index + delta, 0, items.Count - 1);
         _viewModel.SelectedItem = items[newIndex];
-
-        // Scroll the ListBox to keep the selected item visible.
         ItemsList.ScrollIntoView(_viewModel.SelectedItem);
     }
 
@@ -134,7 +163,6 @@ public partial class SidebarWindow : Window
 
     private void ItemsList_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        // Only fire when clicking on an actual clipboard item (not the scrollbar)
         if (e.OriginalSource is FrameworkElement { DataContext: ClipboardItemViewModel item })
         {
             _viewModel?.SelectItemCommand.Execute(item);
