@@ -1,5 +1,5 @@
 #define MyAppName "ClipHive"
-#define MyAppVersion "1.3.1"
+#define MyAppVersion "1.3.2"
 #define MyAppPublisher "ClipHive Contributors"
 #define MyAppURL "https://github.com/levitasOrg/cliphive"
 #define MyAppExeName "ClipHive.exe"
@@ -59,6 +59,21 @@ Type: filesandordirs; Name: "{localappdata}\ClipHive"
 
 [Code]
 
+// ─── .NET 8 Desktop Runtime check ───────────────────────────────────────────
+
+function IsDotNet8DesktopInstalled(): Boolean;
+var
+  FindRec: TFindRec;
+begin
+  Result := False;
+  // Check for any 8.x.y folder under the Windows Desktop App shared runtime
+  if FindFirst(ExpandConstant('{commonpf64}\dotnet\shared\Microsoft.WindowsDesktop.App\8.*'), FindRec) then
+  begin
+    Result := True;
+    FindClose(FindRec);
+  end;
+end;
+
 // ─── Already-installed check ────────────────────────────────────────────────
 
 function IsAlreadyInstalled(): Boolean;
@@ -92,6 +107,22 @@ var
   ResultCode: Integer;
 begin
   Result := True;
+
+  // ── .NET 8 Desktop Runtime prerequisite check ──────────────────────────────
+  if not IsDotNet8DesktopInstalled() then
+  begin
+    Answer := MsgBox(
+      'ClipHive requires the .NET 8 Windows Desktop Runtime, which was not found.' + #13#10 + #13#10 +
+      'Click Yes to open the Microsoft download page, then re-run this installer.' + #13#10 +
+      'Click No to cancel.',
+      mbError, MB_YESNO);
+    if Answer = IDYES then
+      ShellExec('open',
+        'https://dotnet.microsoft.com/download/dotnet/8.0',
+        '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
+    Result := False;
+    Exit;
+  end;
 
   if not IsAlreadyInstalled() then
     Exit;
@@ -160,10 +191,19 @@ begin
   Result := True;
 end;
 
-// ─── Uninstall: remove Run registry key ────────────────────────────────────
+// ─── Uninstall: kill process then clean up registry ────────────────────────
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  ResultCode: Integer;
 begin
+  if CurUninstallStep = usUninstall then
+  begin
+    // Forcefully quit ClipHive if it is running so files can be deleted cleanly.
+    Exec('taskkill.exe', '/F /IM ClipHive.exe', '', SW_HIDE,
+         ewWaitUntilTerminated, ResultCode);
+  end;
+
   if CurUninstallStep = usPostUninstall then
     RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'ClipHive');
 end;

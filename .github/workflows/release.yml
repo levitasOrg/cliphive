@@ -29,14 +29,23 @@ jobs:
       - name: Run tests
         run: dotnet test --configuration Release --no-restore
 
-      - name: Publish self-contained EXE
+      # ── Standalone EXE: self-contained, compressed, all native libs bundled ──
+      - name: Publish standalone EXE
         run: >
           dotnet publish src/ClipHive/ClipHive.csproj
           -c Release -r win-x64 --self-contained true
           -p:PublishSingleFile=true
-          -p:EnableCompressionInSingleFile=false
-          -p:PublishReadyToRun=true
-          -p:IncludeNativeLibrariesForSelfExtract=false
+          -p:EnableCompressionInSingleFile=true
+          -p:PublishReadyToRun=false
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:Version=${{ env.VERSION }}
+          -o dist/standalone
+
+      # ── Installer payload: framework-dependent, no runtime bundled ───────────
+      - name: Publish installer payload
+        run: >
+          dotnet publish src/ClipHive/ClipHive.csproj
+          -c Release -r win-x64 --self-contained false
           -p:Version=${{ env.VERSION }}
           -o dist/release
 
@@ -48,9 +57,9 @@ jobs:
         run: |
           "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ env.VERSION }} installer\ClipHive.iss
 
-      - name: Rename standalone EXE for release
+      - name: Copy standalone EXE to dist
         shell: bash
-        run: cp dist/release/ClipHive.exe "dist/ClipHive-${{ env.VERSION }}-Standalone.exe"
+        run: cp dist/standalone/ClipHive.exe "dist/ClipHive-${{ env.VERSION }}-Standalone.exe"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -65,12 +74,13 @@ jobs:
 
             | File | Description |
             |------|-------------|
-            | `ClipHive-${{ env.VERSION }}-Setup.exe` | **Recommended** — Installer with setup wizard (50 MB) |
-            | `ClipHive-${{ env.VERSION }}-Standalone.exe` | Portable EXE, no installer needed (~163 MB, no .NET required) |
+            | `ClipHive-${{ env.VERSION }}-Setup.exe` | **Recommended** — Installer (~20 MB). Requires [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) — the installer will prompt if it's missing. |
+            | `ClipHive-${{ env.VERSION }}-Standalone.exe` | Portable EXE, no installer needed (~90 MB, .NET runtime bundled) |
 
             ### Requirements
-            - Windows 10 version 1903 or later (Windows 11 fully supported)
-            - No .NET installation required — both builds are self-contained
+            - Windows 10 version 1809 or later (Windows 11 fully supported)
+            - **Installer**: .NET 8 Windows Desktop Runtime (prompted if missing)
+            - **Standalone**: No .NET installation required — runtime is bundled
 
             ### First Run
             After installation, ClipHive starts in the system tray.

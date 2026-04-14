@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-04-15
+
+### Fixed
+- **Standalone EXE now works** — Native DLLs (SQLite, WPF) were previously excluded
+  from the single-file bundle (`IncludeNativeLibrariesForSelfExtract=false`), causing the
+  standalone EXE to crash on launch. All dependencies are now embedded.
+- **Uninstaller now quits the app first** — ClipHive is forcefully terminated via
+  `taskkill` before file removal, ensuring a clean uninstall with no locked-file errors.
+- **Duplicate clipboard entries** — Copying the same content multiple times no longer
+  adds duplicate rows. The existing entry is bumped to the top instead (timestamp
+  updated). Uses a SHA-256 content hash per row — no decryption overhead on copy.
+
+### Changed
+- **Two release artifacts** with different size/dependency trade-offs:
+  - **Setup installer** (~20 MB) — framework-dependent; requires .NET 8 Windows Desktop
+    Runtime (installer checks and opens the download page if missing).
+  - **Standalone EXE** (~90 MB) — self-contained + compressed; no .NET required.
+- Standalone EXE compressed with `EnableCompressionInSingleFile=true`, dropped
+  `PublishReadyToRun` — size reduced from ~225 MB to ~90 MB.
+
 ## [1.3.1] - 2026-04-15
 
 ### Fixed

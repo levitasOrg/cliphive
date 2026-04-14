@@ -84,6 +84,18 @@ public sealed class StorageService : IStorageService, IDisposable
         {
             // Column already exists — ignore.
         }
+
+        // Migrate existing databases that lack the content_hash column (used for deduplication).
+        try
+        {
+            using var alter = _connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE clipboard_items ADD COLUMN content_hash TEXT;";
+            alter.ExecuteNonQuery();
+        }
+        catch (SqliteException ex) when (ex.Message.Contains("duplicate column"))
+        {
+            // Column already exists — ignore.
+        }
     }
 
     /// <summary>Maximum non-pinned items retained. Updated when settings change.</summary>
@@ -95,26 +107,57 @@ public sealed class StorageService : IStorageService, IDisposable
         ArgumentNullException.ThrowIfNull(plaintext);
         ThrowIfDisposed();
 
-        var (ciphertext, iv, tag) = _encryption.Encrypt(plaintext);
+        // SHA-256 of the plaintext — used to detect duplicates without decrypting all rows.
+        string hash = ComputeHash(plaintext);
 
         await _lock.WaitAsync().ConfigureAwait(false);
         try
         {
+            // If the same content already exists, bump its timestamp to the top instead
+            // of inserting a duplicate entry.
+            using var check = _connection.CreateCommand();
+            check.CommandText = """
+                SELECT id FROM clipboard_items
+                WHERE content_hash = $hash AND content_type = 'text'
+                LIMIT 1;
+                """;
+            check.Parameters.AddWithValue("$hash", hash);
+            var existingId = check.ExecuteScalar();
+
+            if (existingId is not null)
+            {
+                using var bump = _connection.CreateCommand();
+                bump.CommandText = "UPDATE clipboard_items SET created_at = $ca WHERE id = $id;";
+                bump.Parameters.AddWithValue("$ca", DateTime.UtcNow.ToString("O"));
+                bump.Parameters.AddWithValue("$id", (long)existingId);
+                bump.ExecuteNonQuery();
+                return;
+            }
+
+            // New item — encrypt and insert.
+            var (ciphertext, iv, tag) = _encryption.Encrypt(plaintext);
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
-                INSERT INTO clipboard_items (ciphertext, iv, tag, created_at, source_app, is_pinned, content_type)
-                VALUES ($ct, $iv, $tag, $ca, $sa, 0, 'text');
+                INSERT INTO clipboard_items (ciphertext, iv, tag, created_at, source_app, is_pinned, content_type, content_hash)
+                VALUES ($ct, $iv, $tag, $ca, $sa, 0, 'text', $hash);
                 """;
             cmd.Parameters.AddWithValue("$ct", ciphertext);
             cmd.Parameters.AddWithValue("$iv", iv);
             cmd.Parameters.AddWithValue("$tag", tag);
             cmd.Parameters.AddWithValue("$ca", DateTime.UtcNow.ToString("O"));
             cmd.Parameters.AddWithValue("$sa", sourceApp is null ? DBNull.Value : (object)sourceApp);
+            cmd.Parameters.AddWithValue("$hash", hash);
             cmd.ExecuteNonQuery();
 
             PurgeOverLimitUnlocked(MaxHistoryCount);
         }
         finally { _lock.Release(); }
+    }
+
+    private static string ComputeHash(string plaintext)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(plaintext);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
     }
 
     /// <inheritdoc/>
