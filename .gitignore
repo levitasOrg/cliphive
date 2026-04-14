@@ -39,3 +39,9 @@ appsettings.Development.json
 install_dotnet.ps1
 dotnet.sh
 .claude/
+
+## Multi-agent / orchestrator runtime artifacts
+agents/
+
+## Internal planning / dev docs (not for public repo)
+docs/ClipHive-E2E-Development-Plan.md

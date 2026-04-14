@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-04-15
+
+### Added
+- **Smart Contextual Actions** — Sidebar items now detect their content type and surface
+  instant actions: URLs show an "Open ↗" button that launches the browser; file paths show
+  "Show in Explorer"; hex color codes (#RRGGBB) render a live color swatch powered by XAML
+  data binding at the GPU level.
+- **Paste as Plain Text (Ctrl+Alt+V)** — New global hotkey strips all RTF/HTML rich
+  formatting from the current clipboard and pastes raw text into the target application.
+  Configurable via Settings.
+- **Offline Image OCR** — When an image or screenshot is copied, ClipHive silently runs
+  Windows' built-in OCR engine (`Windows.Media.Ocr`) in the background and indexes the
+  extracted text in SQLite. Images are now fully searchable by their text content.
+- **Syntax Highlighting (AvalonEdit)** — Clipboard items detected as code show a
+  "⌄ view" button. Clicking it opens an inline AvalonEdit panel with instant syntax
+  coloring (C#, Python, JavaScript, SQL auto-detected). Zero overhead for non-code items.
+- **Windows 11 Desktop Acrylic backdrop** — On Windows 11 (Build 22000+), the sidebar
+  overlay now renders with native Desktop Acrylic glass via `DwmSetWindowAttribute`.
+  Falls back to the existing dark translucent background on Windows 10.
+
+### Changed
+- Target framework updated from `net8.0-windows` to `net8.0-windows10.0.17763.0` to enable
+  WinRT APIs (`Windows.Media.Ocr`, `BitmapDecoder`). Minimum OS remains Windows 10 1903+.
+
+### Performance
+- Sidebar close now calls `GC.Collect()` (×2) after releasing the DataContext, immediately
+  returning XAML bitmap and item memory to the OS when the overlay is dismissed.
+
 ## [1.2.0] - 2026-04-14
 
 ### Fixed
