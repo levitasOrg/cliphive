@@ -89,4 +89,28 @@ internal static class Win32
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    // ── DWM backdrop (Windows 11 Acrylic) ────────────────────────────────────
+
+    /// <summary>DWM attribute: system backdrop type (Windows 11 Build 22000+).</summary>
+    public const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+
+    /// <summary>Desktop Acrylic backdrop — suitable for transient popup windows.</summary>
+    public const int DWMSBT_TRANSIENTWINDOW = 3;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MARGINS
+    {
+        public int Left, Right, Top, Bottom;
+    }
+
+    /// <summary>Sets a DWM window attribute.</summary>
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmSetWindowAttribute(
+        IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
+
+    /// <summary>Extends the DWM-drawn frame into the client area.</summary>
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmExtendFrameIntoClientArea(
+        IntPtr hwnd, ref MARGINS pMarInset);
 }

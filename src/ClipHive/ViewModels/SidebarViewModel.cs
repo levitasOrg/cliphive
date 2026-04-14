@@ -17,6 +17,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
 
     private string _searchText = string.Empty;
     private ClipboardItemViewModel? _selectedItem;
+    private ClipboardItemViewModel? _expandedItem;
     private IReadOnlyList<ClipboardItemViewModel> _filteredItems = Array.Empty<ClipboardItemViewModel>();
 
     // Raised by commands to signal the View that the window should close.
@@ -30,10 +31,14 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         Items = new ObservableCollection<ClipboardItemViewModel>();
         Items.CollectionChanged += (_, _) => RefreshFilteredItems();
 
-        SelectItemCommand = new RelayCommand<ClipboardItemViewModel>(ExecuteSelectItem, _ => true);
-        DeleteItemCommand = new RelayCommand<ClipboardItemViewModel>(ExecuteDeleteItem, _ => true);
-        PinItemCommand = new RelayCommand<ClipboardItemViewModel>(ExecutePinItem, _ => true);
-        ClearAllCommand = new RelayCommand(ExecuteClearAll);
+        SelectItemCommand  = new RelayCommand<ClipboardItemViewModel>(ExecuteSelectItem, _ => true);
+        DeleteItemCommand  = new RelayCommand<ClipboardItemViewModel>(ExecuteDeleteItem, _ => true);
+        PinItemCommand     = new RelayCommand<ClipboardItemViewModel>(ExecutePinItem, _ => true);
+        ClearAllCommand    = new RelayCommand(ExecuteClearAll);
+        ExpandItemCommand  = new RelayCommand<ClipboardItemViewModel>(item =>
+        {
+            ExpandedItem = ReferenceEquals(ExpandedItem, item) ? null : item;
+        });
     }
 
     // ── Observable Properties ────────────────────────────────────────────────
@@ -73,12 +78,23 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         }
     }
 
+    public ClipboardItemViewModel? ExpandedItem
+    {
+        get => _expandedItem;
+        private set
+        {
+            _expandedItem = value;
+            OnPropertyChanged();
+        }
+    }
+
     // ── Commands ─────────────────────────────────────────────────────────────
 
-    public ICommand SelectItemCommand { get; }
-    public ICommand DeleteItemCommand { get; }
-    public ICommand PinItemCommand { get; }
-    public ICommand ClearAllCommand { get; }
+    public ICommand SelectItemCommand  { get; }
+    public ICommand DeleteItemCommand  { get; }
+    public ICommand PinItemCommand     { get; }
+    public ICommand ClearAllCommand    { get; }
+    public ICommand ExpandItemCommand  { get; }
 
     // ── Public API ───────────────────────────────────────────────────────────
 
@@ -90,6 +106,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         // Run collection mutations on the UI thread when available (no-op in tests).
         RunOnUiThread(() =>
         {
+            ExpandedItem = null;
             Items.Clear();
             foreach (var item in records)
             {

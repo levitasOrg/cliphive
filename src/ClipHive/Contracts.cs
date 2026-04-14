@@ -5,7 +5,7 @@ namespace ClipHive;
 public interface IStorageService
 {
     Task AddAsync(string plaintext, string? sourceApp = null);
-    Task AddImageAsync(byte[] imageBytes, string? sourceApp = null);
+    Task AddImageAsync(byte[] imageBytes, string? sourceApp = null, string? ocrText = null);
     Task<IReadOnlyList<ClipboardItem>> GetAllAsync();
     Task<IReadOnlyList<ClipboardItem>> SearchAsync(string query);
     Task DeleteAsync(long id);
@@ -29,7 +29,9 @@ public interface ISettingsService
 public interface IHotkeyService
 {
     event EventHandler? HotkeyPressed;
+    event EventHandler? PlainTextHotkeyPressed;
     bool Register(IntPtr hwnd, uint modifiers, uint virtualKey);
+    bool RegisterPlainText(IntPtr hwnd, uint modifiers, uint virtualKey);
     void Unregister(IntPtr hwnd);
 }
 
@@ -38,6 +40,7 @@ public interface IPasteService
     bool IsPasting { get; }
     Task PasteAsync(string content);
     Task PasteImageAsync(byte[] imageBytes);
+    Task PastePlainTextFromClipboardAsync();
 }
 
 public interface IClipboardMonitorService : IDisposable

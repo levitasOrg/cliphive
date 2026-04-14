@@ -2,6 +2,8 @@ namespace ClipHive;
 
 public enum ClipboardContentType { Text, Image }
 
+public enum ContentKind { Text, Url, HexColor, FilePath, Code }
+
 public sealed record ClipboardItem(
     long Id,
     string EncryptedContent,   // decrypted plaintext for Text items; empty for Image items
@@ -11,5 +13,6 @@ public sealed record ClipboardItem(
     string? SourceApp,
     bool IsPinned,
     ClipboardContentType ContentType = ClipboardContentType.Text,
-    byte[]? ImageData = null   // decoded image bytes (JPEG) for Image items; null for Text
+    byte[]? ImageData = null,  // decoded image bytes (JPEG) for Image items; null for Text
+    string? OcrText = null     // OCR-extracted text for Image items; null otherwise
 );

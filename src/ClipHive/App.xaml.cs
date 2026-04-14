@@ -87,9 +87,13 @@ public partial class App : System.Windows.Application
         _msgWindow = new HwndSource(parameters);
         _msgWindow.AddHook(WndProc);
 
-        // ── Register hotkey (Ctrl+Shift+V by default) ────────────────────────
+        // ── Register hotkeys ─────────────────────────────────────────────────
         _hotkeyService.Register(_msgWindow.Handle, settings.HotkeyModifiers, settings.HotkeyVirtualKey);
         _hotkeyService.HotkeyPressed += OnHotkeyPressed;
+
+        _hotkeyService.RegisterPlainText(_msgWindow.Handle,
+            settings.PlainTextHotkeyModifiers, settings.PlainTextHotkeyVirtualKey);
+        _hotkeyService.PlainTextHotkeyPressed += OnPlainTextHotkeyPressed;
 
         // ── Start clipboard monitoring ────────────────────────────────────────
         _clipboardMonitor.ClipboardChanged      += OnClipboardChanged;
@@ -170,15 +174,22 @@ public partial class App : System.Windows.Application
     private void OnHotkeyPressed(object? sender, EventArgs e) =>
         Dispatcher.Invoke(ShowSidebar);
 
+    private void OnPlainTextHotkeyPressed(object? sender, EventArgs e) =>
+        _ = _paste!.PastePlainTextFromClipboardAsync();
+
     private void OnClipboardChanged(object? sender, string content)
     {
         _ = _storage!.AddAsync(content);
         _sidebarVm?.OnClipboardChanged(content);
     }
 
-    private void OnClipboardImageChanged(object? sender, byte[] imageBytes)
+    private async void OnClipboardImageChanged(object? sender, byte[] imageBytes)
     {
-        _ = _storage!.AddImageAsync(imageBytes);
+        string? ocrText = null;
+        try { ocrText = await OcrService.RecognizeTextAsync(imageBytes).ConfigureAwait(false); }
+        catch { /* OCR failure is non-fatal */ }
+
+        await _storage!.AddImageAsync(imageBytes, ocrText: ocrText).ConfigureAwait(false);
         // Reload sidebar to show the new image item.
         _sidebarVm?.OnClipboardChanged("__image__");
     }
@@ -222,6 +233,7 @@ public partial class App : System.Windows.Application
         AppSettings updated = _settingsService!.Load();
         _storage!.MaxHistoryCount = updated.MaxHistoryCount;
         _hotkeyService!.Register(_msgWindow!.Handle, updated.HotkeyModifiers, updated.HotkeyVirtualKey);
+        _hotkeyService!.RegisterPlainText(_msgWindow!.Handle, updated.PlainTextHotkeyModifiers, updated.PlainTextHotkeyVirtualKey);
 
         // Apply tray visibility preference.
         _trayIcon!.Visible = !updated.HideFromTray;

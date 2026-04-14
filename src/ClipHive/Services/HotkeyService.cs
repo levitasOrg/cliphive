@@ -8,29 +8,27 @@ namespace ClipHive;
 /// </summary>
 public sealed class HotkeyService : IHotkeyService, IDisposable
 {
-    private const int HotkeyId = 9001; // arbitrary unique ID for ClipHive's hotkey
+    private const int HotkeyId          = 9001; // main sidebar hotkey
+    private const int PlainTextHotkeyId = 9002; // paste-as-plain-text hotkey
 
-    private IntPtr _registeredHwnd = IntPtr.Zero;
+    private IntPtr _registeredHwnd      = IntPtr.Zero;
+    private IntPtr _plainTextHwnd       = IntPtr.Zero;
     private bool _disposed;
 
-    /// <summary>
-    /// Raised when the registered hotkey is pressed.
-    /// </summary>
+    /// <summary>Raised when the main sidebar hotkey is pressed.</summary>
     public event EventHandler? HotkeyPressed;
 
+    /// <summary>Raised when the plain-text paste hotkey is pressed.</summary>
+    public event EventHandler? PlainTextHotkeyPressed;
+
     /// <summary>
-    /// Registers the hotkey on the supplied window handle.
+    /// Registers the main sidebar hotkey on the supplied window handle.
     /// If a hotkey was previously registered on a different handle it is first unregistered.
     /// </summary>
-    /// <param name="hwnd">Handle of the message window.</param>
-    /// <param name="modifiers">Modifier keys (MOD_CTRL, MOD_ALT, …).</param>
-    /// <param name="virtualKey">Virtual key code.</param>
-    /// <returns>True if registration succeeded.</returns>
     public bool Register(IntPtr hwnd, uint modifiers, uint virtualKey)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        // Unregister any previous registration
         if (_registeredHwnd != IntPtr.Zero)
             Unregister(_registeredHwnd);
 
@@ -42,8 +40,23 @@ public sealed class HotkeyService : IHotkeyService, IDisposable
     }
 
     /// <summary>
-    /// Unregisters the hotkey on the given window handle.
+    /// Registers the plain-text paste hotkey (Ctrl+Alt+V by default).
     /// </summary>
+    public bool RegisterPlainText(IntPtr hwnd, uint modifiers, uint virtualKey)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (_plainTextHwnd != IntPtr.Zero)
+            Win32.UnregisterHotKey(_plainTextHwnd, PlainTextHotkeyId);
+
+        bool ok = Win32.RegisterHotKey(hwnd, PlainTextHotkeyId, modifiers, virtualKey);
+        if (ok)
+            _plainTextHwnd = hwnd;
+
+        return ok;
+    }
+
+    /// <summary>Unregisters the main hotkey on the given window handle.</summary>
     public void Unregister(IntPtr hwnd)
     {
         if (hwnd == IntPtr.Zero) return;
@@ -52,13 +65,13 @@ public sealed class HotkeyService : IHotkeyService, IDisposable
             _registeredHwnd = IntPtr.Zero;
     }
 
-    /// <summary>
-    /// Called by the WndProc to fire the <see cref="HotkeyPressed"/> event.
-    /// </summary>
+    /// <summary>Called by the WndProc to fire the appropriate hotkey event.</summary>
     public void OnWmHotkey(int id)
     {
         if (id == HotkeyId)
             HotkeyPressed?.Invoke(this, EventArgs.Empty);
+        else if (id == PlainTextHotkeyId)
+            PlainTextHotkeyPressed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc />
@@ -71,6 +84,12 @@ public sealed class HotkeyService : IHotkeyService, IDisposable
         {
             Win32.UnregisterHotKey(_registeredHwnd, HotkeyId);
             _registeredHwnd = IntPtr.Zero;
+        }
+
+        if (_plainTextHwnd != IntPtr.Zero)
+        {
+            Win32.UnregisterHotKey(_plainTextHwnd, PlainTextHotkeyId);
+            _plainTextHwnd = IntPtr.Zero;
         }
     }
 }

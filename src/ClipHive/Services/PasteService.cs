@@ -78,6 +78,41 @@ public sealed class PasteService : IPasteService
         }
     }
 
+    /// <inheritdoc/>
+    public async Task PastePlainTextFromClipboardAsync()
+    {
+        if (System.Threading.Interlocked.CompareExchange(ref _isPastingInt, 1, 0) != 0)
+            return;
+
+        try
+        {
+            // Retrieve the plain-text format only (strips RTF/HTML rich formatting).
+            var app = System.Windows.Application.Current;
+            if (app != null)
+                await app.Dispatcher.InvokeAsync(() =>
+                {
+                    string plain = Clipboard.ContainsText(TextDataFormat.Text)
+                        ? Clipboard.GetText(TextDataFormat.Text)
+                        : string.Empty;
+                    if (!string.IsNullOrEmpty(plain))
+                        Clipboard.SetText(plain, TextDataFormat.UnicodeText);
+                });
+            else
+            {
+                string plain = Clipboard.GetText(TextDataFormat.Text);
+                if (!string.IsNullOrEmpty(plain))
+                    Clipboard.SetText(plain, TextDataFormat.UnicodeText);
+            }
+
+            await Task.Delay(50).ConfigureAwait(false);
+            SendCtrlV();
+        }
+        finally
+        {
+            System.Threading.Interlocked.Exchange(ref _isPastingInt, 0);
+        }
+    }
+
     // ── Private ────────────────────────────────────────────────────────────────
 
     private static BitmapSource LoadBitmapSource(byte[] imageBytes)

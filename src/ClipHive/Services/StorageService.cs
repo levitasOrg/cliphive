@@ -72,6 +72,18 @@ public sealed class StorageService : IStorageService, IDisposable
         {
             // Column already exists — ignore.
         }
+
+        // Migrate existing databases that lack the ocr_text column.
+        try
+        {
+            using var alter = _connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE clipboard_items ADD COLUMN ocr_text TEXT;";
+            alter.ExecuteNonQuery();
+        }
+        catch (SqliteException ex) when (ex.Message.Contains("duplicate column"))
+        {
+            // Column already exists — ignore.
+        }
     }
 
     /// <summary>Maximum non-pinned items retained. Updated when settings change.</summary>
@@ -106,7 +118,7 @@ public sealed class StorageService : IStorageService, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task AddImageAsync(byte[] imageBytes, string? sourceApp = null)
+    public async Task AddImageAsync(byte[] imageBytes, string? sourceApp = null, string? ocrText = null)
     {
         ArgumentNullException.ThrowIfNull(imageBytes);
         ThrowIfDisposed();
@@ -120,14 +132,15 @@ public sealed class StorageService : IStorageService, IDisposable
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
-                INSERT INTO clipboard_items (ciphertext, iv, tag, created_at, source_app, is_pinned, content_type)
-                VALUES ($ct, $iv, $tag, $ca, $sa, 0, 'image');
+                INSERT INTO clipboard_items (ciphertext, iv, tag, created_at, source_app, is_pinned, content_type, ocr_text)
+                VALUES ($ct, $iv, $tag, $ca, $sa, 0, 'image', $ocr);
                 """;
             cmd.Parameters.AddWithValue("$ct", ciphertext);
             cmd.Parameters.AddWithValue("$iv", iv);
             cmd.Parameters.AddWithValue("$tag", tag);
             cmd.Parameters.AddWithValue("$ca", DateTime.UtcNow.ToString("O"));
             cmd.Parameters.AddWithValue("$sa", sourceApp is null ? DBNull.Value : (object)sourceApp);
+            cmd.Parameters.AddWithValue("$ocr", ocrText is null ? DBNull.Value : (object)ocrText);
             cmd.ExecuteNonQuery();
 
             PurgeOverLimitUnlocked(MaxHistoryCount);
@@ -145,7 +158,7 @@ public sealed class StorageService : IStorageService, IDisposable
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
-                SELECT id, ciphertext, iv, tag, created_at, source_app, is_pinned, content_type
+                SELECT id, ciphertext, iv, tag, created_at, source_app, is_pinned, content_type, ocr_text
                 FROM clipboard_items
                 ORDER BY is_pinned DESC, created_at DESC;
                 """;
@@ -161,10 +174,13 @@ public sealed class StorageService : IStorageService, IDisposable
         ThrowIfDisposed();
 
         var all = await GetAllAsync().ConfigureAwait(false);
-        return all
-            .Where(item => item.ContentType == ClipboardContentType.Text &&
-                           item.EncryptedContent.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        return all.Where(item =>
+            (item.ContentType == ClipboardContentType.Text &&
+             item.EncryptedContent.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+            (item.ContentType == ClipboardContentType.Image &&
+             item.OcrText != null &&
+             item.OcrText.Contains(query, StringComparison.OrdinalIgnoreCase))
+        ).ToList();
     }
 
     /// <inheritdoc/>
@@ -253,6 +269,9 @@ public sealed class StorageService : IStorageService, IDisposable
             var contentType  = contentTypeStr == "image"
                 ? ClipboardContentType.Image
                 : ClipboardContentType.Text;
+            string? ocrText  = reader.FieldCount > 8 && !reader.IsDBNull(8)
+                ? reader.GetString(8)
+                : null;
 
             try
             {
@@ -263,7 +282,7 @@ public sealed class StorageService : IStorageService, IDisposable
                     // Decrypted value is the base64-encoded JPEG bytes.
                     byte[] imageData = Convert.FromBase64String(decrypted);
                     items.Add(new ClipboardItem(id, string.Empty, iv, tag,
-                        createdAt, sourceApp, isPinned, ClipboardContentType.Image, imageData));
+                        createdAt, sourceApp, isPinned, ClipboardContentType.Image, imageData, ocrText));
                 }
                 else
                 {

@@ -37,12 +37,37 @@ public partial class SidebarWindow : Window
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (_viewModel is not null)
-            _viewModel.CloseRequested -= OnCloseRequested;
+        {
+            _viewModel.CloseRequested   -= OnCloseRequested;
+            _viewModel.PropertyChanged  -= OnViewModelPropertyChanged;
+        }
 
         _viewModel = DataContext as SidebarViewModel;
 
         if (_viewModel is not null)
-            _viewModel.CloseRequested += OnCloseRequested;
+        {
+            _viewModel.CloseRequested   += OnCloseRequested;
+            _viewModel.PropertyChanged  += OnViewModelPropertyChanged;
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SidebarViewModel.ExpandedItem)) return;
+
+        var item = _viewModel?.ExpandedItem;
+        if (item is null)
+        {
+            DetailPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        DetailPanel.Visibility    = Visibility.Visible;
+        DetailEditor.Text         = item.DecryptedContent;
+        DetailEditor.SyntaxHighlighting = !string.IsNullOrEmpty(item.DetectedLanguage)
+            ? ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance
+                  .GetDefinition(item.DetectedLanguage)
+            : null;
     }
 
     private void OnCloseRequested(object? sender, EventArgs e) => DismissWindow();
@@ -58,6 +83,28 @@ public partial class SidebarWindow : Window
         // clicking the desktop, taskbar, or other apps — WM_NCACTIVATE is authoritative.
         var src = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
         src?.AddHook(WndProc);
+
+        TryApplyAcrylicBackdrop();
+    }
+
+    private void TryApplyAcrylicBackdrop()
+    {
+        // Desktop Acrylic is only available on Windows 11 Build 22000+.
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)) return;
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+
+        // Extend the DWM frame across the entire client area so Acrylic fills it.
+        var margins = new Win32.MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+        Win32.DwmExtendFrameIntoClientArea(hwnd, ref margins);
+
+        // Apply Desktop Acrylic (transient popup style).
+        int backdropType = Win32.DWMSBT_TRANSIENTWINDOW;
+        Win32.DwmSetWindowAttribute(hwnd, Win32.DWMWA_SYSTEMBACKDROP_TYPE,
+            ref backdropType, sizeof(int));
+
+        // Make the root border transparent so the Acrylic shows through.
+        RootBorder.Background = System.Windows.Media.Brushes.Transparent;
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam,
@@ -98,7 +145,11 @@ public partial class SidebarWindow : Window
     {
         if (_closing) return;
         _closing = true;
+        DataContext = null; // release ViewModel reference to allow GC
         Close();
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect(); // second pass cleans up objects with finalizers
     }
 
     // ── Keyboard Navigation ───────────────────────────────────────────────────
