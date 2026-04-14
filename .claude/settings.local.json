@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -Command \"dotnet --version\")",
+      "Bash(powershell.exe:*)",
+      "Bash(export DOTNET_ROOT=\"C:/Users/bannu/AppData/Local/Microsoft/dotnet\")",
+      "Bash(export PATH=\"$DOTNET_ROOT:$PATH\")",
+      "Bash(dotnet --version)",
+      "Bash(export PATH=\"C:/Users/bannu/AppData/Local/Microsoft/dotnet:$PATH\")",
+      "Bash(dotnet new:*)",
+      "Bash(rm -f src/ClipHive/Class1.cs)",
+      "Bash(export DOTNET_CLI_TELEMETRY_OPTOUT=1)",
+      "Bash(D:/Claude/ClipHive/dotnet.sh build:*)",
+      "Bash(ls src/ClipHive/Helpers/)",
+      "Bash(ls src/ClipHive/ViewModels/)",
+      "Bash(ls src/ClipHive/Views/)",
+      "Bash(ls src/ClipHive/Resources/)",
+      "Bash(D:/Claude/ClipHive/dotnet.sh test:*)"
+    ]
+  }
+}

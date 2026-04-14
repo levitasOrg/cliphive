@@ -3,12 +3,30 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>..\..\assets\icon\ClipHive.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RootNamespace>ClipHive</RootNamespace>
+    <AssemblyName>ClipHive</AssemblyName>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Copyright>Copyright © 2026 ClipHive</Copyright>
+    <Description>Lightweight clipboard history manager for Windows</Description>
+    <Company>ClipHive</Company>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.*" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Embed the app icon so it can be loaded at runtime for the system tray -->
+    <EmbeddedResource Include="..\..\assets\icon\ClipHive.ico" LogicalName="ClipHive.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>ClipHive.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 </Project>

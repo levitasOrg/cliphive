@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build (treat warnings as errors)
+        run: dotnet build --no-restore -c Release /p:TreatWarningsAsErrors=true
+
+      - name: Run tests with coverage
+        run: >
+          dotnet test --no-build -c Release
+          --collect:"XPlat Code Coverage"
+          --results-directory coverage
+          --logger "trx;LogFileName=results.trx"
+
+      - name: Generate coverage report
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:coverage/**/coverage.cobertura.xml -targetdir:coverage/html
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/html
+
+      - name: Check coverage threshold (80%)
+        run: |
+          python -c "
+          import xml.etree.ElementTree as ET, glob, sys
+          f = glob.glob('coverage/**/coverage.cobertura.xml', recursive=True)[0]
+          r = float(ET.parse(f).getroot().get('line-rate', '0'))
+          print(f'Coverage: {r*100:.1f}%')
+          sys.exit(0 if r >= 0.80 else 1)
+          "

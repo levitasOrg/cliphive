@@ -8,6 +8,7 @@ public sealed class AppSettings
     public AutoClearPolicy AutoClear { get; set; } = AutoClearPolicy.Never;
     public bool StartWithWindows { get; set; } = false;
     public int MaxHistoryCount { get; set; } = 500;
+    public bool HideFromTray { get; set; } = false;
 }
 
 public enum AutoClearPolicy { TwoHours, ThreeDays, FifteenDays, OneMonth, Never }

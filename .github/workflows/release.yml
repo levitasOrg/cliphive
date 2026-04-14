@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Run tests
+        run: dotnet test --configuration Release --no-restore
+
+      - name: Publish self-contained EXE
+        run: >
+          dotnet publish src/ClipHive/ClipHive.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=false
+          -p:PublishReadyToRun=true
+          -p:IncludeNativeLibrariesForSelfExtract=false
+          -p:Version=${{ env.VERSION }}
+          -o dist/release
+
+      - name: Install Inno Setup
+        run: choco install innosetup --version 6.4.3 -y --no-progress
+
+      - name: Build installer
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ env.VERSION }} installer\ClipHive.iss
+
+      - name: Rename standalone EXE for release
+        shell: bash
+        run: cp dist/release/ClipHive.exe "dist/ClipHive-${{ env.VERSION }}-Standalone.exe"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/ClipHive-${{ env.VERSION }}-Setup.exe
+            dist/ClipHive-${{ env.VERSION }}-Standalone.exe
+          generate_release_notes: true
+          draft: false
+          body: |
+            ## Downloads
+
+            | File | Description |
+            |------|-------------|
+            | `ClipHive-${{ env.VERSION }}-Setup.exe` | **Recommended** — Installer with setup wizard (50 MB) |
+            | `ClipHive-${{ env.VERSION }}-Standalone.exe` | Portable EXE, no installer needed (~163 MB, no .NET required) |
+
+            ### Requirements
+            - Windows 10 version 1903 or later (Windows 11 fully supported)
+            - No .NET installation required — both builds are self-contained
+
+            ### First Run
+            After installation, ClipHive starts in the system tray.
+            Press **Ctrl + Shift + V** to open your clipboard history.
