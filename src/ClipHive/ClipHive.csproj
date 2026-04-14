@@ -19,7 +19,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.*" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.*" />
-    <PackageReference Include="ICSharpCode.AvalonEdit" Version="6.*" />
   </ItemGroup>
   <ItemGroup>
     <!-- Embed the app icon so it can be loaded at runtime for the system tray -->

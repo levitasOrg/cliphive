@@ -62,12 +62,8 @@ public partial class SidebarWindow : Window
             return;
         }
 
-        DetailPanel.Visibility    = Visibility.Visible;
-        DetailEditor.Text         = item.DecryptedContent;
-        DetailEditor.SyntaxHighlighting = !string.IsNullOrEmpty(item.DetectedLanguage)
-            ? ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance
-                  .GetDefinition(item.DetectedLanguage)
-            : null;
+        DetailPanel.Visibility = Visibility.Visible;
+        DetailEditor.Text      = item.DecryptedContent;
     }
 
     private void OnCloseRequested(object? sender, EventArgs e) => DismissWindow();
