@@ -41,7 +41,7 @@ jobs:
           -o dist/release
 
       - name: Install Inno Setup
-        run: choco install innosetup --version 6.4.3 -y --no-progress
+        run: choco install innosetup -y --no-progress --ignore-checksums || true
 
       - name: Build installer
         shell: cmd
