@@ -12,7 +12,7 @@
 
 Use one of these channels:
 
-1. **GitHub Private Vulnerability Reporting** (preferred) — [Report a vulnerability](https://github.com/gokulMv/ClipHive/security/advisories/new)
+1. **GitHub Private Vulnerability Reporting** (preferred) — [Report a vulnerability](https://github.com/levitasOrg/ClipHive/security/advisories/new)
 2. **Email** — security@cliphive.dev
 
 ### What to include

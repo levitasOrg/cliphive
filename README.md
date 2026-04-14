@@ -59,7 +59,7 @@ dotnet --version   # should print 8.x.x
 ### Step 1 — Clone and restore
 
 ```powershell
-git clone https://github.com/gokulMv/ClipHive.git
+git clone https://github.com/levitasOrg/ClipHive.git
 cd ClipHive
 dotnet restore
 ```
