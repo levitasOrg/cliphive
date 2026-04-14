@@ -74,13 +74,14 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Search icon -->
+                <!-- Search icon — Segoe MDL2 Assets "Search" glyph (E721) -->
                 <TextBlock Grid.Column="0"
-                           Text="&#x1F50D;"
+                           Text="&#xE721;"
+                           FontFamily="Segoe MDL2 Assets"
                            FontSize="14"
-                           Foreground="#A0A0A0"
+                           Foreground="#707070"
                            VerticalAlignment="Center"
-                           Margin="6,0,4,0" />
+                           Margin="8,0,4,0" />
 
                 <!-- Search input area with overlay placeholder -->
                 <Grid Grid.Column="1">

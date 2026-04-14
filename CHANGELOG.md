@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-04-15
+
+### Fixed
+- **Search icon** — Replaced the 🔍 emoji (rendered poorly on most DPI settings) with the
+  native Segoe MDL2 Assets "Search" glyph (`&#xE721;`). Crisp at all scales.
+- **Sidebar background preserved on Windows 11** — Acrylic backdrop no longer replaces the
+  dark `#CC1A1A1A` theme with a washed-out grey system tint. The DWM backdrop type is
+  applied without extending the frame or clearing the border background; acrylic adds subtle
+  depth through the 20% transparency while the dark theme remains intact.
+
 ## [1.3.2] - 2026-04-15
 
 ### Fixed

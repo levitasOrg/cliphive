@@ -90,17 +90,12 @@ public partial class SidebarWindow : Window
 
         var hwnd = new WindowInteropHelper(this).Handle;
 
-        // Extend the DWM frame across the entire client area so Acrylic fills it.
-        var margins = new Win32.MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
-        Win32.DwmExtendFrameIntoClientArea(hwnd, ref margins);
-
         // Apply Desktop Acrylic (transient popup style).
+        // The dark #CC1A1A1A border background is kept — acrylic shows subtly
+        // through the 20% transparency, adding depth without washing out the theme.
         int backdropType = Win32.DWMSBT_TRANSIENTWINDOW;
         Win32.DwmSetWindowAttribute(hwnd, Win32.DWMWA_SYSTEMBACKDROP_TYPE,
             ref backdropType, sizeof(int));
-
-        // Make the root border transparent so the Acrylic shows through.
-        RootBorder.Background = System.Windows.Media.Brushes.Transparent;
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam,
