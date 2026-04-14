@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
 using ClipHive.Views;
@@ -31,10 +32,25 @@ public partial class App : System.Windows.Application
     // ── Active sidebar instance (null when closed) ────────────────────────────
     private SidebarWindow? _sidebar;
 
+    // ── Single-instance mutex ─────────────────────────────────────────────────
+    private Mutex? _singleInstanceMutex;
+    // Matches the AppId in ClipHive.iss — guarantees uniqueness across all users.
+    private const string MutexName = "Global\\ClipHive-{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}";
+
     // ─────────────────────────────────────────────────────────────────────────
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        // ── Single-instance guard ─────────────────────────────────────────────
+        _singleInstanceMutex = new Mutex(initiallyOwned: true, MutexName, out bool isFirstInstance);
+        if (!isFirstInstance)
+        {
+            // Another instance is already in the tray — just exit silently.
+            _singleInstanceMutex.Dispose();
+            Shutdown();
+            return;
+        }
+
         base.OnStartup(e);
 
         // Keep the process alive even with no open windows.
@@ -94,6 +110,10 @@ public partial class App : System.Windows.Application
         _storage?.Dispose();
 
         _trayIcon?.Dispose();
+
+        // Release single-instance mutex so a fresh launch can succeed.
+        try { _singleInstanceMutex?.ReleaseMutex(); } catch (ApplicationException) { }
+        _singleInstanceMutex?.Dispose();
 
         base.OnExit(e);
     }
