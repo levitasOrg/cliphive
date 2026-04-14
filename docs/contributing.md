@@ -12,7 +12,7 @@ Thank you for your interest in contributing! This document covers dev setup, cod
 
 2. **Clone and build**
    ```powershell
-   git clone https://github.com/levitasOrg/ClipHive.git
+   git clone https://github.com/levitasOrg/cliphive.git
    cd ClipHive
    dotnet restore
    dotnet build

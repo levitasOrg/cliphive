@@ -116,7 +116,7 @@ public sealed class EncryptionHelper : IEncryptionHelper
                 "ClipHive cannot derive an encryption key for the current user. " +
                 "This may be caused by a corrupted Windows user profile or " +
                 "missing DPAPI support (DataProtectionScope.CurrentUser). " +
-                "Please report this issue at https://github.com/levitasOrg/ClipHive/issues",
+                "Please report this issue at https://github.com/levitasOrg/cliphive/issues",
                 ex);
         }
     }

@@ -1,7 +1,7 @@
 #define MyAppName "ClipHive"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "ClipHive Contributors"
-#define MyAppURL "https://github.com/levitasOrg/ClipHive"
+#define MyAppURL "https://github.com/levitasOrg/cliphive"
 #define MyAppExeName "ClipHive.exe"
 #define MyAppId "{{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 

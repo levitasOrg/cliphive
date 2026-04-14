@@ -25,5 +25,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Single-file self-contained installer (no .NET pre-installed required)
 - Zero network calls — verified by code audit and runtime inspection
 
-[Unreleased]: https://github.com/levitasOrg/ClipHive/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/levitasOrg/ClipHive/releases/tag/v1.0.0
+[Unreleased]: https://github.com/levitasOrg/cliphive/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/levitasOrg/cliphive/releases/tag/v1.0.0
