@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-04-15
+
+### Fixed
+- **Build fix** — Replaced `ICSharpCode.AvalonEdit` (version 6.x unavailable on nuget.org)
+  with a plain read-only `TextBox` for the code detail panel. The "⌄ view" feature works
+  identically — scrollable monospace panel — without the external dependency.
+
 ## [1.3.0] - 2026-04-15
 
 ### Added
