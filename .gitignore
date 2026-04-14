@@ -38,3 +38,4 @@ appsettings.Development.json
 ## Temp files created by orchestrator bootstrap
 install_dotnet.ps1
 dotnet.sh
+.claude/
