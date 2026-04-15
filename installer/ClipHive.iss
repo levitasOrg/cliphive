@@ -1,5 +1,5 @@
 #define MyAppName "ClipHive"
-#define MyAppVersion "1.3.3"
+#define MyAppVersion "1.3.2"
 #define MyAppPublisher "ClipHive Contributors"
 #define MyAppURL "https://github.com/levitasOrg/cliphive"
 #define MyAppExeName "ClipHive.exe"
@@ -60,17 +60,75 @@ Type: filesandordirs; Name: "{localappdata}\ClipHive"
 [Code]
 
 // ─── .NET 8 Desktop Runtime check ───────────────────────────────────────────
+// Tries multiple locations because .NET can be installed by the SDK, by VS,
+// by winget, or by a standalone runtime installer — each may land in a
+// different folder. Falls back to registry when no folder is found.
 
 function IsDotNet8DesktopInstalled(): Boolean;
 var
   FindRec: TFindRec;
+  VersionNames: TArrayOfString;
+  I: Integer;
 begin
   Result := False;
-  // Check for any 8.x.y folder under the Windows Desktop App shared runtime
+
+  // 1 — Standard 64-bit system-wide install path
   if FindFirst(ExpandConstant('{commonpf64}\dotnet\shared\Microsoft.WindowsDesktop.App\8.*'), FindRec) then
   begin
-    Result := True;
     FindClose(FindRec);
+    Result := True;
+    Exit;
+  end;
+
+  // 2 — Hard-coded path (in case {commonpf64} resolves differently)
+  if FindFirst('C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App\8.*', FindRec) then
+  begin
+    FindClose(FindRec);
+    Result := True;
+    Exit;
+  end;
+
+  // 3 — 32-bit program files (rare but possible)
+  if FindFirst(ExpandConstant('{commonpf32}\dotnet\shared\Microsoft.WindowsDesktop.App\8.*'), FindRec) then
+  begin
+    FindClose(FindRec);
+    Result := True;
+    Exit;
+  end;
+
+  // 4 — Per-user install path (dotnet install script with --user flag)
+  if FindFirst(ExpandConstant('{localappdata}\Microsoft\dotnet\shared\Microsoft.WindowsDesktop.App\8.*'), FindRec) then
+  begin
+    FindClose(FindRec);
+    Result := True;
+    Exit;
+  end;
+
+  // 5 — Registry: HKLM\SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App
+  //     .NET registers a DWORD value named "8.x.y" = 1 for each installed version
+  if RegGetValueNames(HKLM, 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App', VersionNames) then
+  begin
+    for I := 0 to GetArrayLength(VersionNames) - 1 do
+    begin
+      if (Length(VersionNames[I]) >= 2) and (Copy(VersionNames[I], 1, 2) = '8.') then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
+
+  // 6 — Registry WOW6432Node fallback
+  if RegGetValueNames(HKLM, 'SOFTWARE\WOW6432Node\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App', VersionNames) then
+  begin
+    for I := 0 to GetArrayLength(VersionNames) - 1 do
+    begin
+      if (Length(VersionNames[I]) >= 2) and (Copy(VersionNames[I], 1, 2) = '8.') then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
   end;
 end;
 
@@ -112,16 +170,26 @@ begin
   if not IsDotNet8DesktopInstalled() then
   begin
     Answer := MsgBox(
-      'ClipHive requires the .NET 8 Windows Desktop Runtime, which was not found.' + #13#10 + #13#10 +
-      'Click Yes to open the Microsoft download page, then re-run this installer.' + #13#10 +
-      'Click No to cancel.',
-      mbError, MB_YESNO);
-    if Answer = IDYES then
+      'The .NET 8 Windows Desktop Runtime was not detected on this system.' + #13#10 + #13#10 +
+      'If you already have it installed (e.g. via SDK or Visual Studio), ' +
+      'click Yes to continue the installation anyway.' + #13#10 + #13#10 +
+      'Click No to open the Microsoft download page first, then re-run this installer.' + #13#10 +
+      'Click Cancel to exit.',
+      mbConfirmation, MB_YESNOCANCEL);
+    if Answer = IDNO then
+    begin
       ShellExec('open',
         'https://dotnet.microsoft.com/download/dotnet/8.0',
         '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
-    Result := False;
-    Exit;
+      Result := False;
+      Exit;
+    end;
+    if Answer = IDCANCEL then
+    begin
+      Result := False;
+      Exit;
+    end;
+    // Answer = IDYES → user says it's installed, continue anyway
   end;
 
   if not IsAlreadyInstalled() then

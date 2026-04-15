@@ -77,19 +77,22 @@
 
     <!-- ─── Clipboard Item ListBoxItem ────────────────────────────────────── -->
     <Style x:Key="ClipItemStyle" TargetType="ListBoxItem">
-        <Setter Property="Background"   Value="Transparent" />
-        <Setter Property="Foreground"   Value="{StaticResource TextPrimaryBrush}" />
-        <Setter Property="Padding"      Value="10,6" />
-        <Setter Property="Cursor"       Value="Hand" />
+        <Setter Property="Background"                 Value="Transparent" />
+        <Setter Property="Foreground"                 Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Padding"                    Value="10,6" />
+        <Setter Property="Cursor"                     Value="Hand" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <!-- Remove WPF's default dotted-rectangle focus visual (grey pointy outline) -->
+        <Setter Property="FocusVisualStyle"           Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
                     <Border x:Name="ItemBorder"
                             Background="{TemplateBinding Background}"
+                            BorderThickness="0"
                             Padding="{TemplateBinding Padding}"
-                            CornerRadius="4"
-                            Margin="4,1">
+                            CornerRadius="6"
+                            Margin="6,1">
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>

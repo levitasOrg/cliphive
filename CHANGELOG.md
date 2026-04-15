@@ -7,42 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.3.3] - 2026-04-15
-
-### Fixed
-- **Search icon** — Replaced the 🔍 emoji (rendered poorly on most DPI settings) with the
-  native Segoe MDL2 Assets "Search" glyph (`&#xE721;`). Crisp at all scales.
-- **Sidebar background preserved on Windows 11** — Acrylic backdrop no longer replaces the
-  dark `#CC1A1A1A` theme with a washed-out grey system tint. The DWM backdrop type is
-  applied without extending the frame or clearing the border background; acrylic adds subtle
-  depth through the 20% transparency while the dark theme remains intact.
-
 ## [1.3.2] - 2026-04-15
 
 ### Fixed
-- **Standalone EXE now works** — Native DLLs (SQLite, WPF) were previously excluded
-  from the single-file bundle (`IncludeNativeLibrariesForSelfExtract=false`), causing the
-  standalone EXE to crash on launch. All dependencies are now embedded.
-- **Uninstaller now quits the app first** — ClipHive is forcefully terminated via
-  `taskkill` before file removal, ensuring a clean uninstall with no locked-file errors.
-- **Duplicate clipboard entries** — Copying the same content multiple times no longer
-  adds duplicate rows. The existing entry is bumped to the top instead (timestamp
-  updated). Uses a SHA-256 content hash per row — no decryption overhead on copy.
+- **Installer .NET detection** — Detection now checks six distinct locations (system-wide
+  64-bit path, hard-coded `C:\Program Files\dotnet`, 32-bit path, per-user install path,
+  registry `HKLM\SOFTWARE\dotnet\Setup\...`, and WOW6432Node). If all checks fail but
+  the user knows .NET is installed, a new "Continue anyway" option lets them proceed
+  without being hard-blocked.
+- **Item outlines / pointy corners** — WPF's default dotted focus rectangle (grey square
+  outline around selected items) is suppressed via `FocusVisualStyle="{x:Null}"`. Item
+  corners are now rounded (6 px radius) with no border, giving a clean card look.
+- **Search icon** — Replaced emoji with native Segoe MDL2 Assets glyph (`&#xE721;`).
+  Crisp at all DPI settings.
+- **Sidebar background on Windows 11** — Acrylic backdrop no longer overwrites the dark
+  `#CC1A1A1A` theme with a washed-out system grey tint.
+- **Standalone EXE** — Native DLLs (SQLite, WPF) are now embedded; standalone no longer
+  crashes on launch.
+- **Uninstaller** — ClipHive is forcefully terminated via `taskkill` before file removal,
+  ensuring a clean uninstall with no locked-file errors.
+- **Duplicate clipboard entries** — Copying the same content multiple times no longer adds
+  duplicate rows. The existing entry is bumped to the top (timestamp updated) using a
+  SHA-256 content hash — no decryption overhead on copy.
 
 ### Changed
-- **Two release artifacts** with different size/dependency trade-offs:
+- **Two release artifacts:**
   - **Setup installer** (~20 MB) — framework-dependent; requires .NET 8 Windows Desktop
-    Runtime (installer checks and opens the download page if missing).
-  - **Standalone EXE** (~90 MB) — self-contained + compressed; no .NET required.
-- Standalone EXE compressed with `EnableCompressionInSingleFile=true`, dropped
-  `PublishReadyToRun` — size reduced from ~225 MB to ~90 MB.
+    Runtime. Installer checks multiple locations and offers "Continue anyway" if auto-
+    detection cannot find an existing install.
+  - **Standalone EXE** (~90 MB) — fully self-contained with compressed runtime; no .NET
+    installation required.
 
-## [1.3.1] - 2026-04-15
-
-### Fixed
-- **Build fix** — Replaced `ICSharpCode.AvalonEdit` (version 6.x unavailable on nuget.org)
-  with a plain read-only `TextBox` for the code detail panel. The "⌄ view" feature works
-  identically — scrollable monospace panel — without the external dependency.
+### Build
+- Replaced `ICSharpCode.AvalonEdit` (unavailable on NuGet) with a plain read-only
+  `TextBox` for the code detail panel. Feature is identical — scrollable monospace view.
 
 ## [1.3.0] - 2026-04-15
 
@@ -151,6 +149,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inno Setup installer with repair/uninstall detection
 - Zero network calls — no telemetry, no cloud sync
 
-[Unreleased]: https://github.com/levitasOrg/cliphive/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/levitasOrg/cliphive/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/levitasOrg/cliphive/compare/v1.3.0...v1.3.2
+[1.3.0]: https://github.com/levitasOrg/cliphive/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/levitasOrg/cliphive/compare/v1.0.0...v1.2.0
 [1.0.0]: https://github.com/levitasOrg/cliphive/releases/tag/v1.0.0
