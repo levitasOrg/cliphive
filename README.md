@@ -97,7 +97,7 @@ Maccy is a great macOS app — but ClipHive is a **separate, Windows-native prod
 
 3. **Platform-native**: ClipHive is not a port, wrapper, or Electron app. It is a WPF application that uses Windows-specific APIs throughout — `DwmSetWindowAttribute` for Acrylic, `Windows.Media.Ocr` for image text, `ProtectedData` (DPAPI) for key storage, Win32 `SendInput` for paste simulation, `WM_NCACTIVATE` for focus tracking. Every feature is implemented at the platform level, not over a cross-platform abstraction.
 
-4. **Size efficiency**: The installer build is ~20 MB (framework-dependent). The standalone build is ~90 MB with the full .NET 8 runtime bundled and compressed. Maccy is ~4 MB because it relies entirely on macOS system frameworks — a fair comparison would be the installer build which similarly relies on the Windows-provided .NET 8 runtime.
+4. **Windows-native stack**: ClipHive uses `Windows.Media.Ocr`, `ProtectedData` (DPAPI), Win32 `SendInput`, `DwmSetWindowAttribute`, and `WM_NCACTIVATE` — every feature is implemented at the platform level, not over a cross-platform abstraction layer. The result is tight OS integration that a port or Electron wrapper cannot match.
 
 ---
 

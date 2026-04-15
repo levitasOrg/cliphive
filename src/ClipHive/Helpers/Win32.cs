@@ -98,6 +98,15 @@ internal static class Win32
     /// <summary>Desktop Acrylic backdrop — suitable for transient popup windows.</summary>
     public const int DWMSBT_TRANSIENTWINDOW = 3;
 
+    // ── DWM corner preference (Windows 11 Build 22000+) ──────────────────────
+
+    /// <summary>DWM attribute: controls window corner rounding preference.</summary>
+    public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+
+    /// <summary>Round corners — OS clips the window shape; eliminates WPF's
+    /// software-rendered grey anti-aliasing at transparent rounded corners.</summary>
+    public const int DWMWCP_ROUND = 2;
+
     [StructLayout(LayoutKind.Sequential)]
     public struct MARGINS
     {

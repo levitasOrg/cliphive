@@ -184,6 +184,31 @@
         <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
     </Style>
 
+    <!-- ─── ToolTip (dark theme) ────────────────────────────────────────── -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Background"      Value="#252525" />
+        <Setter Property="Foreground"      Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontFamily"      Value="{StaticResource DefaultFont}" />
+        <Setter Property="FontSize"        Value="12" />
+        <Setter Property="Padding"         Value="7,4" />
+        <Setter Property="HasDropShadow"   Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ─── Separator ─────────────────────────────────────────────────────── -->
     <Style TargetType="Separator">
         <Setter Property="Background"  Value="{StaticResource BorderBrush}" />

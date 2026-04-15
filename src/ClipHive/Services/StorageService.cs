@@ -160,23 +160,79 @@ public sealed class StorageService : IStorageService, IDisposable
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
     }
 
+    /// <summary>
+    /// Fast image fingerprint: hashes the byte-length plus three 128-byte samples
+    /// (start / middle / end) rather than the entire image.
+    /// O(1) cost regardless of image size; collision-resistant enough for clipboard dedup.
+    /// </summary>
+    private static string ComputeHashBytes(byte[] bytes)
+    {
+        const int Sample = 128;
+        var buf = new byte[8 + Sample * 3];
+
+        // Encode total length so images of different sizes never collide.
+        BitConverter.GetBytes((long)bytes.Length).CopyTo(buf, 0);
+
+        int n = Math.Min(Sample, bytes.Length);
+        Array.Copy(bytes, 0, buf, 8, n);
+
+        if (bytes.Length > Sample)
+        {
+            int mid = bytes.Length / 2;
+            n = Math.Min(Sample, bytes.Length - mid);
+            Array.Copy(bytes, mid, buf, 8 + Sample, n);
+
+            int tail = Math.Max(0, bytes.Length - Sample);
+            n = bytes.Length - tail;
+            Array.Copy(bytes, tail, buf, 8 + Sample * 2, n);
+        }
+
+        return Convert.ToHexString(System.Security.Cryptography.MD5.HashData(buf));
+    }
+
     /// <inheritdoc/>
     public async Task AddImageAsync(byte[] imageBytes, string? sourceApp = null, string? ocrText = null)
     {
         ArgumentNullException.ThrowIfNull(imageBytes);
         ThrowIfDisposed();
 
-        // Store image as base64-encoded string, then encrypt.
-        string base64 = Convert.ToBase64String(imageBytes);
-        var (ciphertext, iv, tag) = _encryption.Encrypt(base64);
+        // SHA-256 of the raw image bytes — same dedup strategy as text.
+        // Without this, every WM_CLIPBOARDUPDATE re-fires for the same image
+        // (e.g. on window open/close) and inserts a duplicate row.
+        string hash = ComputeHashBytes(imageBytes);
 
         await _lock.WaitAsync().ConfigureAwait(false);
         try
         {
+            // If the same image is already stored, bump its timestamp to the top
+            // instead of inserting a duplicate.
+            using var check = _connection.CreateCommand();
+            check.CommandText = """
+                SELECT id FROM clipboard_items
+                WHERE content_hash = $hash AND content_type = 'image'
+                LIMIT 1;
+                """;
+            check.Parameters.AddWithValue("$hash", hash);
+            var existingId = check.ExecuteScalar();
+
+            if (existingId is not null)
+            {
+                using var bump = _connection.CreateCommand();
+                bump.CommandText = "UPDATE clipboard_items SET created_at = $ca WHERE id = $id;";
+                bump.Parameters.AddWithValue("$ca", DateTime.UtcNow.ToString("O"));
+                bump.Parameters.AddWithValue("$id", (long)existingId);
+                bump.ExecuteNonQuery();
+                return;
+            }
+
+            // New image — encrypt and insert with hash.
+            string base64 = Convert.ToBase64String(imageBytes);
+            var (ciphertext, iv, tag) = _encryption.Encrypt(base64);
+
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
-                INSERT INTO clipboard_items (ciphertext, iv, tag, created_at, source_app, is_pinned, content_type, ocr_text)
-                VALUES ($ct, $iv, $tag, $ca, $sa, 0, 'image', $ocr);
+                INSERT INTO clipboard_items (ciphertext, iv, tag, created_at, source_app, is_pinned, content_type, ocr_text, content_hash)
+                VALUES ($ct, $iv, $tag, $ca, $sa, 0, 'image', $ocr, $hash);
                 """;
             cmd.Parameters.AddWithValue("$ct", ciphertext);
             cmd.Parameters.AddWithValue("$iv", iv);
@@ -184,6 +240,7 @@ public sealed class StorageService : IStorageService, IDisposable
             cmd.Parameters.AddWithValue("$ca", DateTime.UtcNow.ToString("O"));
             cmd.Parameters.AddWithValue("$sa", sourceApp is null ? DBNull.Value : (object)sourceApp);
             cmd.Parameters.AddWithValue("$ocr", ocrText is null ? DBNull.Value : (object)ocrText);
+            cmd.Parameters.AddWithValue("$hash", hash);
             cmd.ExecuteNonQuery();
 
             PurgeOverLimitUnlocked(MaxHistoryCount);

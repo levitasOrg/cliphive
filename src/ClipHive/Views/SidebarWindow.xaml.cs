@@ -85,14 +85,20 @@ public partial class SidebarWindow : Window
 
     private void TryApplyAcrylicBackdrop()
     {
-        // Desktop Acrylic is only available on Windows 11 Build 22000+.
+        // DWM features below require Windows 11 Build 22000+.
         if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)) return;
 
         var hwnd = new WindowInteropHelper(this).Handle;
 
+        // Let DWM own the corner clipping (DWMWCP_ROUND).
+        // This eliminates the grey anti-aliasing pixels that WPF's software
+        // renderer produces at the transparent corners of AllowsTransparency windows.
+        // DWM clips the window shape at the OS compositor level — no WPF artefacts.
+        int cornerPref = Win32.DWMWCP_ROUND;
+        Win32.DwmSetWindowAttribute(hwnd, Win32.DWMWA_WINDOW_CORNER_PREFERENCE,
+            ref cornerPref, sizeof(int));
+
         // Apply Desktop Acrylic (transient popup style).
-        // The dark #CC1A1A1A border background is kept — acrylic shows subtly
-        // through the 20% transparency, adding depth without washing out the theme.
         int backdropType = Win32.DWMSBT_TRANSIENTWINDOW;
         Win32.DwmSetWindowAttribute(hwnd, Win32.DWMWA_SYSTEMBACKDROP_TYPE,
             ref backdropType, sizeof(int));

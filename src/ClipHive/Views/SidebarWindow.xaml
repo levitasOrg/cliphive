@@ -13,6 +13,7 @@
         Topmost="True"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
+        UseLayoutRounding="True"
         Loaded="Window_Loaded"
         Deactivated="Window_Deactivated"
         PreviewKeyDown="Window_KeyDown">
@@ -29,7 +30,9 @@
             CornerRadius="8"
             Background="#CC1A1A1A"
             BorderBrush="#3A3A3A"
-            BorderThickness="1">
+            BorderThickness="1"
+            SnapsToDevicePixels="True"
+            UseLayoutRounding="True">
 
         <!-- Slide-in animation from the right — on the Border, not the Window -->
         <Border.RenderTransform>
@@ -166,8 +169,7 @@
                                         CommandParameter="{Binding}"
                                         Background="Transparent" BorderThickness="0"
                                         FocusVisualStyle="{x:Null}"
-                                        Cursor="Hand" Padding="0" VerticalAlignment="Center"
-                                        ToolTip="Pin / Unpin">
+                                        Cursor="Hand" Padding="0" VerticalAlignment="Center">
                                     <Button.Style>
                                         <Style TargetType="Button">
                                             <!-- Default: dim pin (not pinned) -->
