@@ -156,6 +156,7 @@ public sealed class SidebarViewModelTests
         var newItem = MakeItem(42, "new content");
         var (vm, storage, _) = CreateSut(new[] { newItem });
 
+        vm.IsVisible = true;
         vm.OnClipboardChanged("new content");
 
         // Allow the fire-and-forget LoadAsync to complete.
@@ -178,6 +179,7 @@ public sealed class SidebarViewModelTests
         };
         var (vm, storage, _) = CreateSut(items);
 
+        vm.IsVisible = true;
         vm.OnClipboardChanged("duplicate");
 
         await Task.Delay(50);
