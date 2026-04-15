@@ -15,7 +15,7 @@
         ResizeMode="NoResize"
         Loaded="Window_Loaded"
         Deactivated="Window_Deactivated"
-        KeyDown="Window_KeyDown">
+        PreviewKeyDown="Window_KeyDown">
 
     <Window.Resources>
         <ResourceDictionary>
@@ -141,7 +141,7 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <!-- Row 0: pin dot / content / time-ago / view button -->
+                            <!-- Row 0: pin dot / content / time-ago / view button / delete -->
                             <Grid Grid.Row="0">
                                 <Grid.ColumnDefinitions>
                                     <!-- Pin indicator -->
@@ -151,6 +151,8 @@
                                     <!-- Time ago -->
                                     <ColumnDefinition Width="Auto" />
                                     <!-- View button (code items only) -->
+                                    <ColumnDefinition Width="Auto" />
+                                    <!-- Delete button -->
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
@@ -236,6 +238,29 @@
                                                 <DataTrigger Binding="{Binding Kind}" Value="Code">
                                                     <Setter Property="Visibility" Value="Visible"/>
                                                 </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+
+                                <!-- Delete (×) button — always visible, turns red on hover -->
+                                <Button Grid.Column="4"
+                                        Content="&#xE711;"
+                                        FontFamily="Segoe MDL2 Assets"
+                                        FontSize="10"
+                                        Command="{Binding DataContext.DeleteItemCommand,
+                                                  RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                        CommandParameter="{Binding}"
+                                        Background="Transparent" BorderThickness="0"
+                                        Cursor="Hand" Padding="6,0,2,0" VerticalAlignment="Center"
+                                        ToolTip="Delete">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Foreground" Value="#484848"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Foreground" Value="#E05555"/>
+                                                </Trigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Button.Style>
@@ -348,7 +373,7 @@
                        FontFamily="Segoe UI"
                        FontSize="10"
                        FontStyle="Italic"
-                       Foreground="#3D2A52"
+                       Foreground="#7B68AA"
                        HorizontalAlignment="Right"
                        Margin="0,2,10,6" />
         </Grid>

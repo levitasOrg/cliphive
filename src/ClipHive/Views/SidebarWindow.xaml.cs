@@ -145,6 +145,8 @@ public partial class SidebarWindow : Window
 
     // ── Keyboard Navigation ───────────────────────────────────────────────────
 
+    // Using PreviewKeyDown (set in XAML) so we intercept Up/Down/Enter/Escape
+    // before WPF's keyboard-navigation system or the focused TextBox consumes them.
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         switch (e.Key)
@@ -173,7 +175,10 @@ public partial class SidebarWindow : Window
                 break;
 
             case Key.Delete:
-                if (_viewModel?.SelectedItem is { } toDelete)
+                // Only intercept Delete when the search box is empty —
+                // if the user is editing search text, let the TextBox handle it.
+                if (string.IsNullOrEmpty(SearchBox.Text) &&
+                    _viewModel?.SelectedItem is { } toDelete)
                 {
                     _viewModel.DeleteItemCommand.Execute(toDelete);
                     e.Handled = true;
