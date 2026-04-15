@@ -123,11 +123,21 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     /// Using a transient Id=0 item was eliminated (Fix #5): a user who deleted an
     /// Id=0 item before LoadAsync refreshed would silently leave the DB row behind.
     /// </summary>
+    /// <summary>
+    /// Set to true while the sidebar window is visible so that clipboard events
+    /// trigger a live reload. When false, reloads are skipped — LoadAsync is called
+    /// on open instead, preventing unnecessary decrypt+thumbnail work in the background.
+    /// </summary>
+    public bool IsVisible { get; set; }
+
     public void OnClipboardChanged(string newContent)
     {
         if (string.IsNullOrEmpty(newContent)) return;
-        // Reload to pick up the persisted item with its real DB id.
-        _ = LoadAsync();
+        // Only reload if the sidebar is currently open. When closed, LoadAsync is
+        // called on ShowSidebar() instead, avoiding decrypt + image thumbnail work
+        // on every clipboard copy regardless of whether the UI is visible.
+        if (IsVisible)
+            _ = LoadAsync();
     }
 
     // ── Private Helpers ──────────────────────────────────────────────────────

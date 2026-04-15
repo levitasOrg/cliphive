@@ -215,7 +215,16 @@ public partial class App : System.Windows.Application
         _sidebar.Left = screen.Right  - _sidebar.Width  - 12;
         _sidebar.Top  = screen.Top    + 12;
 
-        _sidebar.Closed += (_, _) => _sidebar = null;
+        _sidebar.Closed += (_, _) =>
+        {
+            _sidebarVm!.IsVisible = false;
+            _sidebar = null;
+        };
+
+        // Mark visible and reload fresh history before showing.
+        _sidebarVm!.IsVisible = true;
+        _ = _sidebarVm.LoadAsync();
+
         _sidebar.Show();
         // Explicitly steal foreground — Show() alone does not move keyboard focus
         // from the previous app because the hotkey fires on a hidden HWND, not on

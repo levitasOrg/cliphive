@@ -225,9 +225,18 @@ public sealed class StorageService : IStorageService, IDisposable
                 return;
             }
 
-            // New image — encrypt and insert with hash.
+            // New image — encrypt image bytes and OCR text separately, then insert.
+            // OCR text must be encrypted to uphold the "all content encrypted at rest"
+            // guarantee — storing it plaintext would expose image content without the key.
             string base64 = Convert.ToBase64String(imageBytes);
             var (ciphertext, iv, tag) = _encryption.Encrypt(base64);
+
+            string? encryptedOcr = null;
+            if (ocrText is not null)
+            {
+                var (ocrCt, ocrIv, ocrTag) = _encryption.Encrypt(ocrText);
+                encryptedOcr = $"{ocrCt}:{ocrIv}:{ocrTag}";
+            }
 
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
@@ -239,7 +248,7 @@ public sealed class StorageService : IStorageService, IDisposable
             cmd.Parameters.AddWithValue("$tag", tag);
             cmd.Parameters.AddWithValue("$ca", DateTime.UtcNow.ToString("O"));
             cmd.Parameters.AddWithValue("$sa", sourceApp is null ? DBNull.Value : (object)sourceApp);
-            cmd.Parameters.AddWithValue("$ocr", ocrText is null ? DBNull.Value : (object)ocrText);
+            cmd.Parameters.AddWithValue("$ocr", encryptedOcr is null ? DBNull.Value : (object)encryptedOcr);
             cmd.Parameters.AddWithValue("$hash", hash);
             cmd.ExecuteNonQuery();
 
@@ -369,9 +378,23 @@ public sealed class StorageService : IStorageService, IDisposable
             var contentType  = contentTypeStr == "image"
                 ? ClipboardContentType.Image
                 : ClipboardContentType.Text;
-            string? ocrText  = reader.FieldCount > 8 && !reader.IsDBNull(8)
-                ? reader.GetString(8)
-                : null;
+            string? ocrText  = null;
+            if (reader.FieldCount > 8 && !reader.IsDBNull(8))
+            {
+                string raw = reader.GetString(8);
+                // Format: "ciphertext:iv:tag" (encrypted) or plain text (legacy rows).
+                var parts = raw.Split(':', 3);
+                if (parts.Length == 3)
+                {
+                    try { ocrText = _encryption.Decrypt(parts[0], parts[1], parts[2]); }
+                    catch { ocrText = null; } // corrupt encrypted ocr — skip gracefully
+                }
+                else
+                {
+                    // Legacy plaintext OCR from rows stored before encryption was added.
+                    ocrText = raw;
+                }
+            }
 
             try
             {

@@ -148,9 +148,13 @@ public partial class SidebarWindow : Window
         _closing = true;
         DataContext = null; // release ViewModel reference to allow GC
         Close();
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect(); // second pass cleans up objects with finalizers
+        // Run GC off the UI thread so the sidebar close is not visibly blocked.
+        Task.Run(() =>
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        });
     }
 
     // ── Keyboard Navigation ───────────────────────────────────────────────────

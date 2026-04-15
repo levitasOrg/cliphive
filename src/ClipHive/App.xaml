@@ -4,7 +4,10 @@
     <Application.Resources>
         <!-- ToolTip must live in Application.Resources — tooltip popups open in their
              own top-level window and do not inherit from Window-scoped dictionaries. -->
-        <Style TargetType="ToolTip">
+        <!-- OverridesDefaultStyle="True" is required — without it WPF merges the
+             system Aero theme's ToolTip chrome over our template, producing a white
+             popup background even when Background and Template are both set. -->
+        <Style TargetType="ToolTip" OverridesDefaultStyle="True">
             <Setter Property="Background"      Value="#252525" />
             <Setter Property="Foreground"      Value="#F0F0F0" />
             <Setter Property="BorderBrush"     Value="#3A3A3A" />

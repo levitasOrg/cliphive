@@ -39,7 +39,7 @@ public sealed class AutoClearService : IAutoClearService
             return; // already running
 
         _timer = new System.Threading.Timer(
-            callback: _ => RunCleanupAsync().GetAwaiter().GetResult(),
+            callback: _ => _ = RunCleanupAsync(),
             state: null,
             dueTime: CheckInterval,
             period: CheckInterval);
