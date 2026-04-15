@@ -200,8 +200,8 @@ public partial class App : System.Windows.Application
     {
         if (_sidebar is not null)
         {
-            // Already open — bring to front.
-            _sidebar.Activate();
+            // Already open — toggle: pressing the hotkey again closes it.
+            _sidebar.Close();
             return;
         }
 
@@ -217,6 +217,10 @@ public partial class App : System.Windows.Application
 
         _sidebar.Closed += (_, _) => _sidebar = null;
         _sidebar.Show();
+        // Explicitly steal foreground — Show() alone does not move keyboard focus
+        // from the previous app because the hotkey fires on a hidden HWND, not on
+        // a visible foreground window.
+        _sidebar.Activate();
     }
 
     private void OpenSettings()

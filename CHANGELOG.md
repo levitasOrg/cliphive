@@ -9,38 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.2] - 2026-04-15
 
+### Added
+- **Per-item delete button** — Each clipboard entry now has a × button to remove it instantly
+- **Pin toggle** — Click the pin icon on any item to keep it at the top; click again to unpin
+- **Hotkey toggle** — Pressing Ctrl+Shift+V while the sidebar is open now closes it
+
 ### Fixed
-- **Installer .NET detection** — Detection now checks six distinct locations (system-wide
-  64-bit path, hard-coded `C:\Program Files\dotnet`, 32-bit path, per-user install path,
-  registry `HKLM\SOFTWARE\dotnet\Setup\...`, and WOW6432Node). If all checks fail but
-  the user knows .NET is installed, a new "Continue anyway" option lets them proceed
-  without being hard-blocked.
-- **Item outlines / pointy corners** — WPF's default dotted focus rectangle (grey square
-  outline around selected items) is suppressed via `FocusVisualStyle="{x:Null}"`. Item
-  corners are now rounded (6 px radius) with no border, giving a clean card look.
-- **Search icon** — Replaced emoji with native Segoe MDL2 Assets glyph (`&#xE721;`).
-  Crisp at all DPI settings.
-- **Sidebar background on Windows 11** — Acrylic backdrop no longer overwrites the dark
-  `#CC1A1A1A` theme with a washed-out system grey tint.
-- **Standalone EXE** — Native DLLs (SQLite, WPF) are now embedded; standalone no longer
-  crashes on launch.
-- **Uninstaller** — ClipHive is forcefully terminated via `taskkill` before file removal,
-  ensuring a clean uninstall with no locked-file errors.
-- **Duplicate clipboard entries** — Copying the same content multiple times no longer adds
-  duplicate rows. The existing entry is bumped to the top (timestamp updated) using a
-  SHA-256 content hash — no decryption overhead on copy.
-
-### Changed
-- **Two release artifacts:**
-  - **Setup installer** (~20 MB) — framework-dependent; requires .NET 8 Windows Desktop
-    Runtime. Installer checks multiple locations and offers "Continue anyway" if auto-
-    detection cannot find an existing install.
-  - **Standalone EXE** (~90 MB) — fully self-contained with compressed runtime; no .NET
-    installation required.
-
-### Build
-- Replaced `ICSharpCode.AvalonEdit` (unavailable on NuGet) with a plain read-only
-  `TextBox` for the code detail panel. Feature is identical — scrollable monospace view.
+- **Keyboard focus on open** — Typing works immediately after opening with Ctrl+Shift+V; no need to click the window first
+- **Image duplicates** — Copying the same image no longer creates duplicate entries on each reopen
+- **Window rounded corners** — Eliminated grey anti-aliasing on the window's rounded corners
+- **Item separation** — Clipboard items now appear as distinct cards with visible spacing
+- **Arrow key navigation** — Up/Down keys now work reliably after clicking an item
+- **Installer .NET detection** — Checks six locations before prompting; offers "Continue anyway" instead of blocking
+- **Uninstaller cleanup** — Uninstalling now removes all files including any added after installation
+- **Dark tooltip** — Hover tooltips now match the dark theme instead of showing a white popup
 
 ## [1.3.0] - 2026-04-15
 

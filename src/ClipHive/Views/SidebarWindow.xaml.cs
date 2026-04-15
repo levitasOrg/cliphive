@@ -124,15 +124,19 @@ public partial class SidebarWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        SearchBox.Focus();
-        Keyboard.Focus(SearchBox);
-
-        // Enable deactivation-close only after the dispatcher has fully rendered
-        // the window. This prevents the hotkey's own keypress from immediately
-        // deactivating the window before the user sees it.
+        // Defer focus and _isReady to Input priority so:
+        // • The Ctrl+Shift+V key-up event has already been processed (no stray deactivation).
+        // • Activate() runs after the window is fully shown, so SetForegroundWindow succeeds
+        //   and SearchBox.Focus() actually lands keyboard input in this window.
         Dispatcher.BeginInvoke(
             System.Windows.Threading.DispatcherPriority.Input,
-            new Action(() => _isReady = true));
+            new Action(() =>
+            {
+                Activate();
+                SearchBox.Focus();
+                Keyboard.Focus(SearchBox);
+                _isReady = true;
+            }));
     }
 
     // Keep Deactivated as a secondary safety net for edge cases the WndProc misses.
