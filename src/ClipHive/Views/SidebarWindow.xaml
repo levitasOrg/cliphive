@@ -172,6 +172,18 @@
                                         Cursor="Hand" Padding="0" VerticalAlignment="Center">
                                     <Button.Style>
                                         <Style TargetType="Button">
+                                            <!-- Strip default WPF button chrome entirely —
+                                                 without a custom Template the default chrome
+                                                 paints a white hover highlight regardless of
+                                                 Background="Transparent". -->
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
                                             <!-- Default: dim pin (not pinned) -->
                                             <Setter Property="Foreground" Value="#404040"/>
                                             <Style.Triggers>
@@ -290,6 +302,16 @@
                                         ToolTip="Delete">
                                     <Button.Style>
                                         <Style TargetType="Button">
+                                            <!-- Strip default WPF button chrome so no white
+                                                 hover highlight appears over the dark sidebar. -->
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
                                             <Setter Property="Foreground" Value="#484848"/>
                                             <Style.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
