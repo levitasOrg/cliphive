@@ -16,7 +16,7 @@
 - **Live search** — Type to filter history in real time; searches both text content and OCR-extracted image text
 - **Keyboard navigation** — `↑`/`↓` to navigate, `Enter` to paste, `Delete` to remove, `Escape` to dismiss
 - **Per-item delete** — Click the `×` button on any item to remove it instantly
-- **Pin items** — Keep important clips at the top of the list permanently
+- **Pin items** — Click the pin icon (📌) on any item to keep it permanently at the top of the list; click again to unpin
 - **Auto-clear** — Optional automatic history purge: 2 hours, 3 days, 15 days, 1 month, or never
 - **Duplicate prevention** — Copying the same content twice bumps it to the top instead of creating a duplicate (SHA-256 hash check, no decryption overhead)
 
@@ -62,7 +62,7 @@ Each clipboard item detects its content type and surfaces instant actions:
 | Navigate items | `↑` / `↓` arrow keys |
 | Paste selected | `Enter` |
 | Delete item | `Delete` key or click the `×` button on the item |
-| Pin / unpin item | Right-click tray → or use `PinItemCommand` |
+| Pin / unpin item | Click the 📌 icon on any item |
 | Paste as plain text | `Ctrl + Alt + V` |
 | Close sidebar | `Escape` or click elsewhere |
 | Settings | Right-click tray icon → Settings |
@@ -103,12 +103,12 @@ Maccy is a great macOS app — but ClipHive is a **separate, Windows-native prod
 
 ## Privacy Guarantee
 
-ClipHive stores clipboard data **only on your machine**, encrypted with a key that never leaves your device:
+Everything stays on your machine — no cloud, no sync, no accounts.
 
-- `netstat -an` while running: **zero outbound connections**
-- Direct SQL inspection of `%LOCALAPPDATA%\ClipHive\history.db`: **all values are base64 ciphertext**
-- Copy the database to another machine: **decryption fails** (DPAPI user-scope isolation)
-- Encryption key stored at `%LOCALAPPDATA%\ClipHive\key.dat` — readable only by your Windows account
+- **Zero network activity** — ClipHive makes no outbound connections while running. No telemetry, no update pings, nothing.
+- **Fully encrypted** — All clipboard history is encrypted with AES-256-GCM before being saved. The raw text is never written to disk as plaintext.
+- **Device-bound** — The encryption key is protected by Windows and is tied to your user account on this machine. Copying the data to another device cannot decrypt it.
+- **Offline-only OCR** — Image text extraction uses Windows' built-in OCR engine. No image data is sent anywhere.
 
 ---
 
@@ -216,12 +216,9 @@ Stop-Process -Name "ClipHive" -Force -ErrorAction SilentlyContinue
 
 ### `System.Security.Cryptography.CryptographicException` at runtime
 
-**Cause:** Database was written with an old key (from versions before 1.2.0).
+**Cause:** Database was written with an old key (from versions before 1.2.0 which changed how keys are derived).
 
-**Fix:** Delete the old database (key is fine):
-```powershell
-Remove-Item "$env:LOCALAPPDATA\ClipHive\history.db"
-```
+**Fix:** Delete the history database — your encryption key file is fine and doesn't need to change. The app will create a fresh database on next launch. (No clipboard history is recoverable from an incompatible database, so there is nothing lost by deleting it.)
 
 ### Windows Defender flags the EXE
 

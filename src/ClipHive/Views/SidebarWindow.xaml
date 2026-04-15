@@ -141,11 +141,11 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <!-- Row 0: pin dot / content / time-ago / view button / delete -->
+                            <!-- Row 0: pin button / content / time-ago / view button / delete -->
                             <Grid Grid.Row="0">
                                 <Grid.ColumnDefinitions>
-                                    <!-- Pin indicator -->
-                                    <ColumnDefinition Width="12" />
+                                    <!-- Pin button -->
+                                    <ColumnDefinition Width="18" />
                                     <!-- Content -->
                                     <ColumnDefinition Width="*" />
                                     <!-- Time ago -->
@@ -156,23 +156,46 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <!-- Pin dot — visible only when IsPinned = true -->
-                                <Ellipse Grid.Column="0"
-                                         Width="6" Height="6"
-                                         Fill="#F0A050"
-                                         VerticalAlignment="Center"
-                                         Margin="0,0,4,0">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Visibility" Value="Hidden" />
+                                <!-- Pin toggle button — orange when pinned, dim grey when not -->
+                                <Button Grid.Column="0"
+                                        Content="&#xE840;"
+                                        FontFamily="Segoe MDL2 Assets"
+                                        FontSize="10"
+                                        Command="{Binding DataContext.PinItemCommand,
+                                                  RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                        CommandParameter="{Binding}"
+                                        Background="Transparent" BorderThickness="0"
+                                        FocusVisualStyle="{x:Null}"
+                                        Cursor="Hand" Padding="0" VerticalAlignment="Center"
+                                        ToolTip="Pin / Unpin">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <!-- Default: dim pin (not pinned) -->
+                                            <Setter Property="Foreground" Value="#404040"/>
                                             <Style.Triggers>
+                                                <!-- Pinned: show orange -->
                                                 <DataTrigger Binding="{Binding IsPinned}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Setter Property="Foreground" Value="#F0A050"/>
                                                 </DataTrigger>
+                                                <!-- Hover: always brighten toward accent -->
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsMouseOver}" Value="True"/>
+                                                        <Condition Binding="{Binding IsPinned}" Value="False"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Foreground" Value="#A0A0A0"/>
+                                                </MultiDataTrigger>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsMouseOver}" Value="True"/>
+                                                        <Condition Binding="{Binding IsPinned}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Foreground" Value="#FFB870"/>
+                                                </MultiDataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
+                                    </Button.Style>
+                                </Button>
 
                                 <!-- Content — text preview OR image thumbnail -->
                                 <ContentControl Grid.Column="1" VerticalAlignment="Top">
@@ -195,12 +218,21 @@
                                                     <Setter Property="ContentTemplate">
                                                         <Setter.Value>
                                                             <DataTemplate>
-                                                                <Image Source="{Binding ImageSource}"
-                                                                       MaxHeight="90"
-                                                                       MaxWidth="180"
-                                                                       Stretch="Uniform"
-                                                                       RenderOptions.BitmapScalingMode="HighQuality"
-                                                                       Margin="0,4,0,4" />
+                                                                <!-- Dark card absorbs the captured window-border pixels
+                                                                     (#3A3A3A from ClipHive's rounded frame) so they blend
+                                                                     into the background instead of showing as a grey outline.
+                                                                     Padding gives the screenshot breathing room inside the card. -->
+                                                                <Border Background="#141414"
+                                                                        CornerRadius="6"
+                                                                        Padding="6"
+                                                                        Margin="0,4,0,4"
+                                                                        ClipToBounds="True">
+                                                                    <Image Source="{Binding ImageSource}"
+                                                                           MaxHeight="86"
+                                                                           MaxWidth="190"
+                                                                           Stretch="Uniform"
+                                                                           RenderOptions.BitmapScalingMode="HighQuality" />
+                                                                </Border>
                                                             </DataTemplate>
                                                         </Setter.Value>
                                                     </Setter>

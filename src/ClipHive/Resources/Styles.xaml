@@ -77,22 +77,25 @@
 
     <!-- ─── Clipboard Item ListBoxItem ────────────────────────────────────── -->
     <Style x:Key="ClipItemStyle" TargetType="ListBoxItem">
-        <Setter Property="Background"                 Value="Transparent" />
+        <Setter Property="Background"                 Value="#1E1E1E" />
         <Setter Property="Foreground"                 Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="Padding"                    Value="10,6" />
         <Setter Property="Cursor"                     Value="Hand" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <!-- Remove WPF's default dotted-rectangle focus visual (grey pointy outline) -->
+        <!-- Suppress WPF's dotted focus rectangle (grey pointy outline on selection) -->
         <Setter Property="FocusVisualStyle"           Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
+                    <!-- Slightly elevated card background (#1E1E1E) against the sidebar
+                         (#1A1A1A) creates clear item separation without explicit dividers.
+                         Margin "6,3" gives visible vertical breathing room between items. -->
                     <Border x:Name="ItemBorder"
                             Background="{TemplateBinding Background}"
                             BorderThickness="0"
                             Padding="{TemplateBinding Padding}"
                             CornerRadius="6"
-                            Margin="6,1">
+                            Margin="6,3">
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -111,12 +114,28 @@
     </Style>
 
     <!-- ─── ListBox ────────────────────────────────────────────────────────── -->
+    <!-- Custom Template removes the default WPF Border+ScrollViewer that renders
+         system highlight colors around items regardless of item template. -->
     <Style x:Key="ClipListBoxStyle" TargetType="ListBox">
-        <Setter Property="Background"      Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding"         Value="0" />
-        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="Background"         Value="Transparent" />
+        <Setter Property="BorderThickness"    Value="0" />
+        <Setter Property="Padding"            Value="0" />
+        <Setter Property="FocusVisualStyle"   Value="{x:Null}" />
         <Setter Property="ItemContainerStyle" Value="{StaticResource ClipItemStyle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <ScrollViewer Background="Transparent"
+                                  BorderThickness="0"
+                                  Focusable="False"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto"
+                                  CanContentScroll="True">
+                        <ItemsPresenter />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- ─── Dark Button ────────────────────────────────────────────────────── -->
