@@ -18,6 +18,14 @@
         Deactivated="Window_Deactivated"
         PreviewKeyDown="Window_KeyDown">
 
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ClipHive;component/Resources/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
 <Border x:Name="RootBorder"
             CornerRadius="8"
             Background="#CC1A1A1A"
