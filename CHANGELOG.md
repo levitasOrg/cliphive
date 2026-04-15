@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Installer .NET detection** — Checks six locations before prompting; offers "Continue anyway" instead of blocking
 - **Uninstaller cleanup** — Uninstalling now removes all files including any added after installation
 - **Dark tooltip** — Hover tooltips now match the dark theme instead of showing a white popup
+- **Button hover highlight** — Pin and delete buttons no longer show a white hover background over the dark sidebar
 
 ## [1.3.0] - 2026-04-15
 
