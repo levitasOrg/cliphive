@@ -7,7 +7,8 @@
         <!-- OverridesDefaultStyle="True" is required — without it WPF merges the
              system Aero theme's ToolTip chrome over our template, producing a white
              popup background even when Background and Template are both set. -->
-        <Style TargetType="ToolTip" OverridesDefaultStyle="True">
+        <Style TargetType="ToolTip">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
             <Setter Property="Background"      Value="#252525" />
             <Setter Property="Foreground"      Value="#F0F0F0" />
             <Setter Property="BorderBrush"     Value="#3A3A3A" />
