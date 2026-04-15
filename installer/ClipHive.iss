@@ -55,6 +55,10 @@ Filename: "ie4uinit.exe"; Parameters: "-show"; Flags: runhidden nowait
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
+; Remove the entire install directory — catches any DLLs or files that were
+; created after installation and are not tracked by Inno Setup's uninstall log.
+Type: filesandordirs; Name: "{app}"
+; Remove user data directory (clipboard history + encryption key).
 Type: filesandordirs; Name: "{localappdata}\ClipHive"
 
 [Code]
@@ -273,5 +277,14 @@ begin
   end;
 
   if CurUninstallStep = usPostUninstall then
+  begin
     RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'ClipHive');
+
+    // Belt-and-suspenders cleanup: force-delete the install directory so any DLLs
+    // or files created after installation (and therefore not tracked by Inno Setup's
+    // uninstall log) are also removed. {app} is resolved before uninstall begins.
+    if DirExists(ExpandConstant('{app}')) then
+      Exec('cmd.exe', '/c rd /s /q "' + ExpandConstant('{app}') + '"',
+           '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  end;
 end;
