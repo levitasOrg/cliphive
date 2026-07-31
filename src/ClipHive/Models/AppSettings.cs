@@ -12,6 +12,20 @@ public sealed class AppSettings
     public bool StartWithWindows { get; set; } = false;
     public int MaxHistoryCount { get; set; } = 500;
     public bool HideFromTray { get; set; } = false;
+
+    /// <summary>
+    /// Process names (without .exe) whose copies are never recorded,
+    /// e.g. ["KeePass", "Bitwarden"]. Case-insensitive. Edited in settings.json.
+    /// Note: apps following the standard exclusion clipboard formats are always
+    /// ignored automatically, without needing an entry here.
+    /// </summary>
+    public List<string> IgnoredApps { get; set; } = new();
+
+    /// <summary>
+    /// Regex patterns; captured text matching any of them is never recorded,
+    /// e.g. ["^ghp_[A-Za-z0-9]+$"]. Case-insensitive. Edited in settings.json.
+    /// </summary>
+    public List<string> IgnorePatterns { get; set; } = new();
 }
 
 public enum AutoClearPolicy { TwoHours, ThreeDays, FifteenDays, OneMonth, Never }

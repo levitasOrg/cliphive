@@ -7,10 +7,20 @@ namespace ClipHive;
 /// SQLite-backed clipboard history store.
 /// Supports both text and image (JPEG bytes) clipboard items.
 /// All content is encrypted at rest; decryption happens on retrieval.
+/// Dedupe fingerprints are keyed HMACs (never bare hashes of plaintext), so the
+/// database leaks nothing that would let an attacker confirm content guesses offline.
 /// A SemaphoreSlim(1,1) serialises all database access.
 /// </summary>
 public sealed class StorageService : IStorageService, IDisposable
 {
+    /// <summary>
+    /// Schema/data version stored in PRAGMA user_version.
+    /// v2: content_hash switched from plaintext SHA-256 (a guess-confirmation oracle)
+    ///     to keyed HMAC-SHA256; image fingerprints now cover the full bytes; legacy
+    ///     plaintext ocr_text rows re-encrypted.
+    /// </summary>
+    private const int CurrentDataVersion = 2;
+
     private readonly IEncryptionHelper _encryption;
     private readonly SqliteConnection _connection;
     private readonly System.Threading.SemaphoreSlim _lock = new(1, 1);
@@ -41,6 +51,7 @@ public sealed class StorageService : IStorageService, IDisposable
         wal.ExecuteNonQuery();
 
         EnsureSchema();
+        MigrateDataIfNeeded();
     }
 
     private void EnsureSchema()
@@ -98,6 +109,108 @@ public sealed class StorageService : IStorageService, IDisposable
         }
     }
 
+    /// <summary>
+    /// One-time data migration to <see cref="CurrentDataVersion"/>. Pre-v2 rows carry a
+    /// plaintext SHA-256 content_hash and possibly plaintext ocr_text; both are rewritten
+    /// by decrypting each row and re-deriving the keyed fingerprint / encrypted OCR.
+    /// Rows that fail to decrypt are left untouched (they are skipped on read anyway).
+    /// </summary>
+    private void MigrateDataIfNeeded()
+    {
+        using var versionCmd = _connection.CreateCommand();
+        versionCmd.CommandText = "PRAGMA user_version;";
+        long version = (long)(versionCmd.ExecuteScalar() ?? 0L);
+        if (version >= CurrentDataVersion) return;
+
+        using (var tx = _connection.BeginTransaction())
+        {
+            using var select = _connection.CreateCommand();
+            select.Transaction = tx;
+            select.CommandText = "SELECT id, ciphertext, iv, tag, content_type, ocr_text FROM clipboard_items;";
+
+            var updates = new List<(long Id, string Hash, string? OcrEncrypted, bool UpdateOcr)>();
+            using (var reader = select.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    long id = reader.GetInt64(0);
+                    try
+                    {
+                        string decrypted = _encryption.Decrypt(
+                            reader.GetString(1), reader.GetString(2), reader.GetString(3));
+                        bool isImage = !reader.IsDBNull(4) && reader.GetString(4) == "image";
+
+                        string hash = isImage
+                            ? _encryption.ComputeContentHash(Convert.FromBase64String(decrypted))
+                            : _encryption.ComputeContentHash(decrypted);
+
+                        // Re-encrypt legacy plaintext OCR (v1.3.0 rows). Encrypted values
+                        // are "ct:iv:tag" with base64 parts; anything else is plaintext.
+                        string? ocrEncrypted = null;
+                        bool updateOcr = false;
+                        if (!reader.IsDBNull(5))
+                        {
+                            string rawOcr = reader.GetString(5);
+                            if (!IsEncryptedOcr(rawOcr))
+                            {
+                                var (ct, iv, tag) = _encryption.Encrypt(rawOcr);
+                                ocrEncrypted = $"{ct}:{iv}:{tag}";
+                                updateOcr = true;
+                            }
+                        }
+
+                        updates.Add((id, hash, ocrEncrypted, updateOcr));
+                    }
+                    catch (Exception ex) when (ex is System.Security.Cryptography.CryptographicException
+                                                  or FormatException)
+                    {
+                        // Undecryptable row (wrong key / corrupt) — leave as-is.
+                    }
+                }
+            }
+
+            foreach (var (id, hash, ocrEncrypted, updateOcr) in updates)
+            {
+                using var update = _connection.CreateCommand();
+                update.Transaction = tx;
+                update.CommandText = updateOcr
+                    ? "UPDATE clipboard_items SET content_hash = $hash, ocr_text = $ocr WHERE id = $id;"
+                    : "UPDATE clipboard_items SET content_hash = $hash WHERE id = $id;";
+                update.Parameters.AddWithValue("$hash", hash);
+                update.Parameters.AddWithValue("$id", id);
+                if (updateOcr)
+                    update.Parameters.AddWithValue("$ocr", (object?)ocrEncrypted ?? DBNull.Value);
+                update.ExecuteNonQuery();
+            }
+
+            using var stamp = _connection.CreateCommand();
+            stamp.Transaction = tx;
+            stamp.CommandText = $"PRAGMA user_version = {CurrentDataVersion};";
+            stamp.ExecuteNonQuery();
+
+            tx.Commit();
+        }
+    }
+
+    /// <summary>
+    /// True when an ocr_text value is in the encrypted "ct:iv:tag" format
+    /// (three parts, each valid base64, 12-byte IV and 16-byte tag).
+    /// </summary>
+    private static bool IsEncryptedOcr(string raw)
+    {
+        var parts = raw.Split(':', 3);
+        return parts.Length == 3
+            && TryBase64Length(parts[0]) >= 0
+            && TryBase64Length(parts[1]) == 12   // IV
+            && TryBase64Length(parts[2]) == 16;  // GCM tag
+    }
+
+    private static int TryBase64Length(string s)
+    {
+        try { return Convert.FromBase64String(s).Length; }
+        catch (FormatException) { return -1; }
+    }
+
     /// <summary>Maximum non-pinned items retained. Updated when settings change.</summary>
     public int MaxHistoryCount { get; set; } = 500;
 
@@ -107,8 +220,9 @@ public sealed class StorageService : IStorageService, IDisposable
         ArgumentNullException.ThrowIfNull(plaintext);
         ThrowIfDisposed();
 
-        // SHA-256 of the plaintext — used to detect duplicates without decrypting all rows.
-        string hash = ComputeHash(plaintext);
+        // Keyed HMAC of the plaintext — detects duplicates without decrypting all
+        // rows, and (unlike a bare hash) reveals nothing about the content.
+        string hash = _encryption.ComputeContentHash(plaintext);
 
         await _lock.WaitAsync().ConfigureAwait(false);
         try
@@ -154,52 +268,16 @@ public sealed class StorageService : IStorageService, IDisposable
         finally { _lock.Release(); }
     }
 
-    private static string ComputeHash(string plaintext)
-    {
-        var bytes = System.Text.Encoding.UTF8.GetBytes(plaintext);
-        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
-    }
-
-    /// <summary>
-    /// Fast image fingerprint: hashes the byte-length plus three 128-byte samples
-    /// (start / middle / end) rather than the entire image.
-    /// O(1) cost regardless of image size; collision-resistant enough for clipboard dedup.
-    /// </summary>
-    private static string ComputeHashBytes(byte[] bytes)
-    {
-        const int Sample = 128;
-        var buf = new byte[8 + Sample * 3];
-
-        // Encode total length so images of different sizes never collide.
-        BitConverter.GetBytes((long)bytes.Length).CopyTo(buf, 0);
-
-        int n = Math.Min(Sample, bytes.Length);
-        Array.Copy(bytes, 0, buf, 8, n);
-
-        if (bytes.Length > Sample)
-        {
-            int mid = bytes.Length / 2;
-            n = Math.Min(Sample, bytes.Length - mid);
-            Array.Copy(bytes, mid, buf, 8 + Sample, n);
-
-            int tail = Math.Max(0, bytes.Length - Sample);
-            n = bytes.Length - tail;
-            Array.Copy(bytes, tail, buf, 8 + Sample * 2, n);
-        }
-
-        return Convert.ToHexString(System.Security.Cryptography.MD5.HashData(buf));
-    }
-
     /// <inheritdoc/>
     public async Task AddImageAsync(byte[] imageBytes, string? sourceApp = null, string? ocrText = null)
     {
         ArgumentNullException.ThrowIfNull(imageBytes);
         ThrowIfDisposed();
 
-        // SHA-256 of the raw image bytes — same dedup strategy as text.
-        // Without this, every WM_CLIPBOARDUPDATE re-fires for the same image
-        // (e.g. on window open/close) and inserts a duplicate row.
-        string hash = ComputeHashBytes(imageBytes);
+        // Keyed HMAC over the FULL image bytes (they are already in memory, so a
+        // sampled fingerprint would only save microseconds while risking silent
+        // collisions between same-size screenshots).
+        string hash = _encryption.ComputeContentHash(imageBytes);
 
         await _lock.WaitAsync().ConfigureAwait(false);
         try
@@ -381,18 +459,16 @@ public sealed class StorageService : IStorageService, IDisposable
             string? ocrText  = null;
             if (reader.FieldCount > 8 && !reader.IsDBNull(8))
             {
+                // Always the encrypted "ciphertext:iv:tag" format — legacy plaintext
+                // rows were re-encrypted by the v2 migration, so plaintext values are
+                // never accepted here (an attacker with DB write access must not be
+                // able to plant readable rows).
                 string raw = reader.GetString(8);
-                // Format: "ciphertext:iv:tag" (encrypted) or plain text (legacy rows).
                 var parts = raw.Split(':', 3);
                 if (parts.Length == 3)
                 {
                     try { ocrText = _encryption.Decrypt(parts[0], parts[1], parts[2]); }
                     catch { ocrText = null; } // corrupt encrypted ocr — skip gracefully
-                }
-                else
-                {
-                    // Legacy plaintext OCR from rows stored before encryption was added.
-                    ocrText = raw;
                 }
             }
 
@@ -449,11 +525,21 @@ public sealed class StorageService : IStorageService, IDisposable
 
     public void Dispose()
     {
-        if (!_disposed)
+        if (_disposed) return;
+        _disposed = true; // new operations now throw ObjectDisposedException
+
+        // Give any in-flight operation a moment to finish before tearing down the
+        // connection — fire-and-forget adds or an auto-clear tick may still hold
+        // the semaphore during app shutdown.
+        bool acquired = _lock.Wait(TimeSpan.FromSeconds(2));
+        try
         {
-            _lock.Dispose();
             _connection.Dispose();
-            _disposed = true;
+        }
+        finally
+        {
+            if (acquired) _lock.Release();
+            _lock.Dispose();
         }
     }
 }

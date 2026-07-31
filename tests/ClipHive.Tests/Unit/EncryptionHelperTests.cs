@@ -171,10 +171,48 @@ public sealed class EncryptionHelperTests
     [Fact]
     public void Constructor_NullKey_UsesDerivedKey_DoesNotThrow()
     {
-        // Should not throw — falls back to DPAPI or SHA-256 fallback
+        // Loads/creates the real DPAPI-protected key.dat for the current user —
+        // exercises the production key path on the Windows CI runner. (There is
+        // deliberately no non-DPAPI fallback; corruption surfaces as
+        // EncryptionKeyException, handled by the app's recovery dialog.)
         var helper = new EncryptionHelper(null);
         var (ct, iv, tag) = helper.Encrypt("ping");
         string result = helper.Decrypt(ct, iv, tag);
         Assert.Equal("ping", result);
+    }
+
+    // --- Content fingerprints ---
+
+    [Fact]
+    public void ComputeContentHash_SameInput_IsDeterministic()
+    {
+        var helper = new EncryptionHelper(TestKey);
+        Assert.Equal(helper.ComputeContentHash("hello"), helper.ComputeContentHash("hello"));
+    }
+
+    [Fact]
+    public void ComputeContentHash_String_MatchesUtf8Bytes()
+    {
+        var helper = new EncryptionHelper(TestKey);
+        Assert.Equal(
+            helper.ComputeContentHash("héllo 日本語"),
+            helper.ComputeContentHash(System.Text.Encoding.UTF8.GetBytes("héllo 日本語")));
+    }
+
+    [Fact]
+    public void ComputeContentHash_IsKeyed_NotABareHash()
+    {
+        // The fingerprint must depend on the key: a bare SHA-256 of the plaintext
+        // would let anyone with the DB confirm content guesses offline.
+        var otherKey = (byte[])TestKey.Clone();
+        otherKey[0] ^= 0xFF;
+
+        var a = new EncryptionHelper(TestKey).ComputeContentHash("hunter2");
+        var b = new EncryptionHelper(otherKey).ComputeContentHash("hunter2");
+        var bareSha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes("hunter2")));
+
+        Assert.NotEqual(a, b);
+        Assert.NotEqual(bareSha, a);
     }
 }

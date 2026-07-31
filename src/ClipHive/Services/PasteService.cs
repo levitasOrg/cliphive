@@ -1,17 +1,19 @@
 using System.Windows;
 using System.Windows.Media.Imaging;
 using Clipboard = System.Windows.Clipboard;
+using DataObject = System.Windows.DataObject;
 using TextDataFormat = System.Windows.TextDataFormat;
 
 namespace ClipHive;
 
 /// <summary>
 /// Pastes text or image content into the previously focused window by:
-/// 1. Writing the content to the clipboard.
+/// 1. Writing the content to the clipboard, stamped with the private
+///    <see cref="ClipboardFormats.OwnCopy"/> marker so the clipboard monitor
+///    deterministically ignores the self-generated update (no timing window).
 /// 2. Sending Ctrl+V keystrokes to the target application.
 ///
-/// <see cref="IsPasting"/> is set before writing and cleared after, so
-/// <see cref="ClipboardMonitorService"/> can suppress the self-generated event.
+/// <see cref="IsPasting"/> remains as a cheap first-line suppression check.
 /// </summary>
 public sealed class PasteService : IPasteService
 {
@@ -29,15 +31,11 @@ public sealed class PasteService : IPasteService
 
         try
         {
-            // Clipboard.SetText must be called on an STA thread — marshal to the
+            // Clipboard writes must happen on an STA thread — marshal to the
             // WPF UI dispatcher so this works even when the continuation lands on
             // the thread pool after a ConfigureAwait(false).
-            var app = System.Windows.Application.Current;
-            if (app != null)
-                await app.Dispatcher.InvokeAsync(() =>
-                    Clipboard.SetText(content, TextDataFormat.UnicodeText));
-            else
-                Clipboard.SetText(content, TextDataFormat.UnicodeText);
+            await RunOnStaThread(() => SetClipboardMarked(d =>
+                d.SetData(System.Windows.DataFormats.UnicodeText, content)));
 
             await Task.Delay(50).ConfigureAwait(false);
             SendCtrlV();
@@ -60,14 +58,7 @@ public sealed class PasteService : IPasteService
         {
             var bitmapSource = LoadBitmapSource(imageBytes);
 
-            // Clipboard.SetImage must be called on an STA thread — marshal to the
-            // WPF UI dispatcher so this works even when the continuation lands on
-            // the thread pool after a ConfigureAwait(false).
-            var app = System.Windows.Application.Current;
-            if (app != null)
-                await app.Dispatcher.InvokeAsync(() => Clipboard.SetImage(bitmapSource));
-            else
-                Clipboard.SetImage(bitmapSource);
+            await RunOnStaThread(() => SetClipboardMarked(d => d.SetImage(bitmapSource)));
 
             await Task.Delay(50).ConfigureAwait(false);
             SendCtrlV();
@@ -86,23 +77,18 @@ public sealed class PasteService : IPasteService
 
         try
         {
-            // Retrieve the plain-text format only (strips RTF/HTML rich formatting).
-            var app = System.Windows.Application.Current;
-            if (app != null)
-                await app.Dispatcher.InvokeAsync(() =>
-                {
-                    string plain = Clipboard.ContainsText(TextDataFormat.Text)
-                        ? Clipboard.GetText(TextDataFormat.Text)
-                        : string.Empty;
-                    if (!string.IsNullOrEmpty(plain))
-                        Clipboard.SetText(plain, TextDataFormat.UnicodeText);
-                });
-            else
+            await RunOnStaThread(() =>
             {
-                string plain = Clipboard.GetText(TextDataFormat.Text);
+                // UnicodeText is already plain: rewriting the clipboard with ONLY this
+                // format is what strips RTF/HTML. (Never round-trip through the ANSI
+                // TextDataFormat.Text — that destroys any non-codepage character:
+                // CJK, Cyrillic, emoji all become '?'.)
+                string plain = Clipboard.ContainsText(TextDataFormat.UnicodeText)
+                    ? Clipboard.GetText(TextDataFormat.UnicodeText)
+                    : string.Empty;
                 if (!string.IsNullOrEmpty(plain))
-                    Clipboard.SetText(plain, TextDataFormat.UnicodeText);
-            }
+                    SetClipboardMarked(d => d.SetData(System.Windows.DataFormats.UnicodeText, plain));
+            });
 
             await Task.Delay(50).ConfigureAwait(false);
             SendCtrlV();
@@ -114,6 +100,27 @@ public sealed class PasteService : IPasteService
     }
 
     // ── Private ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Writes a DataObject to the clipboard carrying <paramref name="populate"/>'s
+    /// content plus the own-copy marker. copy:true so the data survives app exit.
+    /// </summary>
+    private static void SetClipboardMarked(Action<DataObject> populate)
+    {
+        var data = new DataObject();
+        populate(data);
+        data.SetData(ClipboardFormats.OwnCopy, new byte[] { 1 });
+        Clipboard.SetDataObject(data, copy: true);
+    }
+
+    private static async Task RunOnStaThread(Action action)
+    {
+        var app = System.Windows.Application.Current;
+        if (app != null)
+            await app.Dispatcher.InvokeAsync(action);
+        else
+            action();
+    }
 
     private static BitmapSource LoadBitmapSource(byte[] imageBytes)
     {

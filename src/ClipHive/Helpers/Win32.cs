@@ -90,6 +90,16 @@ internal static class Win32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    // ── P/Invoke: clipboard-owner identification ─────────────────────────────
+
+    /// <summary>Returns the HWND of the window that last placed data on the clipboard.</summary>
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetClipboardOwner();
+
+    /// <summary>Retrieves the process id owning the given window.</summary>
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
     // ── DWM backdrop (Windows 11 Acrylic) ────────────────────────────────────
 
     /// <summary>DWM attribute: system backdrop type (Windows 11 Build 22000+).</summary>

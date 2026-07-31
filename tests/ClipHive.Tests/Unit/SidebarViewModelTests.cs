@@ -93,6 +93,26 @@ public sealed class SidebarViewModelTests
     }
 
     [Fact]
+    public void SearchText_MatchesFullOcrText_BeyondThe80CharPreview()
+    {
+        // Regression: image search used to see only the 80-char OCR slice shown in
+        // Preview, so anything the OCR engine extracted after that was unfindable.
+        string ocr = new string('x', 100) + " NEEDLE-TERM at the very end";
+        var imageItem = new ClipboardItem(3, string.Empty, "iv==", "tag==",
+            DateTime.UtcNow, null, false, ClipboardContentType.Image,
+            new byte[] { 1, 2, 3 }, ocr);
+
+        var (vm, _, _) = CreateSut();
+        vm.Items.Add(new ClipboardItemViewModel(imageItem, string.Empty));
+        vm.Items.Add(new ClipboardItemViewModel(MakeItem(1, "unrelated"), "unrelated"));
+
+        vm.SearchText = "needle-term";
+
+        Assert.Single(vm.FilteredItems);
+        Assert.True(vm.FilteredItems[0].IsImage);
+    }
+
+    [Fact]
     public void SearchText_NoMatch_ReturnsEmpty()
     {
         var (vm, _, _) = CreateSut();

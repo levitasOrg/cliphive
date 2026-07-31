@@ -64,10 +64,15 @@ External storage (on disk, encrypted):
        │
        ▼
 3. ClipboardMonitorService.WndProc fires ClipboardChanged event
-   (checks PasteService.IsPasting to prevent re-entry)
+   Skipped entirely when:
+   - the update carries ClipHive's own-copy marker format (self-paste),
+   - the source app marked it with a standard exclusion format
+     (ExcludeClipboardContentFromMonitorProcessing, CanIncludeInClipboardHistory=0,
+      Clipboard Viewer Ignore — password managers do this),
+   - the source app or content matches the user's IgnoredApps / IgnorePatterns.
        │
        ▼
-4. App.xaml.cs handler calls StorageService.AddAsync(plaintext)
+4. App.xaml.cs handler calls StorageService.AddAsync(plaintext, sourceApp)
        │
        ▼
 5. StorageService calls EncryptionHelper.Encrypt(plaintext)
@@ -93,28 +98,36 @@ External storage (on disk, encrypted):
        │
        ▼
 11. User selects item → PasteService.PasteAsync(content)
-    - Sets IsPasting = true (prevents step 3 re-entry)
-    - Clipboard.SetText(content)
+    - Writes a DataObject carrying the content + the private
+      "ClipHive.OwnCopy" marker format → step 3 skips it deterministically
     - SendInput(Ctrl+V)
-    - IsPasting = false
 ```
 
-## Key Derivation (DPAPI)
+## Encryption Key (DPAPI, since v1.2.0)
 
 ```
-Fixed entropy bytes (hard-coded seed)
+First run:  RandomNumberGenerator.GetBytes(32)
     │
     ▼
-ProtectedData.Protect(entropy, null, DataProtectionScope.LocalMachine)
-    │  ← machine-scoped: output differs per machine, per Windows install
+ProtectedData.Protect(key, null, DataProtectionScope.CurrentUser)
+    │  ← user-scoped: only this Windows account can unprotect it
     ▼
-SHA-256 hash of protected bytes
-    │
-    ▼
-32-byte AES-256 key (cached in memory, never written to disk)
+written to %LOCALAPPDATA%\ClipHive\key.dat
+
+Later runs: File.ReadAllBytes(key.dat) → ProtectedData.Unprotect → same 32-byte key
 ```
 
-**Why machine-scope?** If the SQLite database is copied to another machine, decryption throws `CryptographicException`. This is the privacy isolation guarantee.
+A second key for dedupe fingerprints is derived in memory as
+`HMAC-SHA256(key, "ClipHive.ContentHash.v2")` — the stored `content_hash` column is a
+keyed HMAC of the plaintext, so it deduplicates without decryption yet reveals nothing
+that would let an attacker confirm content guesses offline.
+
+**Why user scope?** If the database + key.dat are copied to another machine (or
+another user's profile), `Unprotect` throws — the data is bound to this Windows
+account. (Caveat: with roaming profiles / credential roaming, DPAPI CurrentUser
+keys legitimately follow the user; the guarantee is user-bound, not machine-bound.)
+If key.dat is corrupted, startup offers a key reset (fresh key, history discarded —
+it is undecryptable without the old key) instead of failing to launch.
 
 ## Architecture Decision Records
 
@@ -126,4 +139,4 @@ See the main development plan for full ADRs. Summary:
 | Storage | SQLite (Microsoft.Data.Sqlite) | Structured queries, WAL mode, disaster recovery via file copy |
 | Encryption | AES-256-GCM | Authenticated encryption, random IV per record, .NET 8 built-in |
 | Win32 | Raw P/Invoke | No third-party hook libraries; full control; minimal dependency surface |
-| Installer | Inno Setup 6 | Smallest size, no UAC required, easy to audit |
+| Installer | Inno Setup 6 | Small, easy to audit; per-user install (PrivilegesRequired=lowest), so no UAC by default |

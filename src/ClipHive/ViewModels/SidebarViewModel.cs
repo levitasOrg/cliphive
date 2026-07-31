@@ -149,9 +149,12 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
 
         if (!string.IsNullOrEmpty(query))
         {
+            // OcrText is matched in full so images are searchable by everything the
+            // OCR engine extracted, not just the 80-char slice shown in Preview.
             source = source.Where(i =>
                 i.Preview.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                i.DecryptedContent.Contains(query, StringComparison.OrdinalIgnoreCase));
+                i.DecryptedContent.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                (i.OcrText?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
         // Pinned items always first, then by insertion order (index in Items).
@@ -211,11 +214,16 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     private void ExecutePinItem(ClipboardItemViewModel? item)
     {
         if (item is null) return;
-        if (item.Id > 0)
-            _ = _storage.SetPinnedAsync(item.Id, !item.IsPinned);
+        _ = PinAndReloadAsync(item);
+    }
 
-        // Reload to reflect the new pinned state from storage.
-        _ = LoadAsync();
+    private async Task PinAndReloadAsync(ClipboardItemViewModel item)
+    {
+        // Sequence the write before the reload — two racing fire-and-forget calls
+        // could reload before the pin landed and show stale pin state.
+        if (item.Id > 0)
+            await _storage.SetPinnedAsync(item.Id, !item.IsPinned).ConfigureAwait(false);
+        await LoadAsync().ConfigureAwait(false);
     }
 
     private void ExecuteClearAll()

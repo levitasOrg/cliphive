@@ -140,7 +140,13 @@ public partial class SidebarWindow : Window
     }
 
     // Keep Deactivated as a secondary safety net for edge cases the WndProc misses.
-    private void Window_Deactivated(object sender, EventArgs e) => DismissWindow();
+    // It MUST honor the same _isReady guard: WPF raises Deactivated independently of
+    // the Win32 messages, so an unguarded dismiss here reintroduces the "hotkey
+    // keypress instantly closes the window" bug the guard exists to prevent.
+    private void Window_Deactivated(object sender, EventArgs e)
+    {
+        if (_isReady) DismissWindow();
+    }
 
     private void DismissWindow()
     {
@@ -148,13 +154,9 @@ public partial class SidebarWindow : Window
         _closing = true;
         DataContext = null; // release ViewModel reference to allow GC
         Close();
-        // Run GC off the UI thread so the sidebar close is not visibly blocked.
-        Task.Run(() =>
-        {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-        });
+        // No forced GC here: a blocking gen-2 collection suspends all threads right
+        // inside the click-to-paste focus window, adding jank for no benefit — the
+        // released ViewModel/bitmaps are collected naturally.
     }
 
     // ── Keyboard Navigation ───────────────────────────────────────────────────
