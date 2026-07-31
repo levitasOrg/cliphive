@@ -1,5 +1,10 @@
 #define MyAppName "ClipHive"
-#define MyAppVersion "1.3.2"
+; CI passes the real version via ISCC /DMyAppVersion=<tag>; the fallback below is
+; only for local builds. The #ifndef guard is what makes the CI define win — an
+; unconditional #define would silently override it and break the release upload.
+#ifndef MyAppVersion
+  #define MyAppVersion "1.3.2"
+#endif
 #define MyAppPublisher "ClipHive Contributors"
 #define MyAppURL "https://github.com/levitasOrg/cliphive"
 #define MyAppExeName "ClipHive.exe"
@@ -13,7 +18,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}/issues
 AppUpdatesURL={#MyAppURL}/releases
-DefaultDirName={autopf64}\{#MyAppName}
+DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=..\dist
 OutputBaseFilename=ClipHive-{#MyAppVersion}-Setup
@@ -21,7 +26,13 @@ SetupIconFile=..\assets\icon\ClipHive.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-PrivilegesRequired=admin
+; Per-user install by default: the app writes HKCU Run, a user desktop icon, and
+; %LOCALAPPDATA% data — under an elevated install with a DIFFERENT admin account all
+; of those would land in the admin's profile, not the logged-in user's (autostart
+; never fires, uninstall wipes the wrong person's data). "lowest" installs to
+; {localappdata}\Programs with no UAC; power users can still elevate via the dialog.
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
 ; Startup entry (HKCU) and user desktop shortcut are intentionally per-user
 UsedUserAreasWarning=no
 ArchitecturesAllowed=x64compatible
@@ -57,9 +68,9 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 [UninstallDelete]
 ; Remove the entire install directory — catches any DLLs or files that were
 ; created after installation and are not tracked by Inno Setup's uninstall log.
+; The user DATA directory (history + encryption key) is NOT listed here: deleting
+; it is destructive and irreversible, so the uninstaller asks first (see [Code]).
 Type: filesandordirs; Name: "{app}"
-; Remove user data directory (clipboard history + encryption key).
-Type: filesandordirs; Name: "{localappdata}\ClipHive"
 
 [Code]
 
@@ -286,5 +297,16 @@ begin
     if DirExists(ExpandConstant('{app}')) then
       Exec('cmd.exe', '/c rd /s /q "' + ExpandConstant('{app}') + '"',
            '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+    // Clipboard history + encryption key: destructive and irreversible, so ask.
+    // Silent uninstalls (e.g. the Repair flow's /SILENT relaunch) keep the data.
+    if DirExists(ExpandConstant('{localappdata}\ClipHive')) then
+    begin
+      if (not UninstallSilent) and
+         (MsgBox('Also delete your clipboard history and encryption key?' + #13#10 + #13#10 +
+                 'Choose No to keep them for a future reinstall.',
+                 mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES) then
+        DelTree(ExpandConstant('{localappdata}\ClipHive'), True, True, True);
+    end;
   end;
 end;

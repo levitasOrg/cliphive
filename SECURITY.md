@@ -37,6 +37,8 @@ We follow coordinated disclosure. We ask that you give us reasonable time to add
 ClipHive is designed with privacy as a first principle:
 
 - **No network calls** — the app never makes outbound connections
-- **AES-256-GCM encryption** — all clipboard data is encrypted before being written to SQLite
-- **DPAPI machine-scope** — the encryption key is derived using Windows DPAPI with machine scope; the database cannot be decrypted on another machine
+- **AES-256-GCM encryption** — all clipboard data (including OCR-extracted image text) is encrypted before being written to SQLite
+- **DPAPI user-scope key** (since v1.2.0) — a random 256-bit key is protected with Windows DPAPI (CurrentUser scope) and stored at `%LOCALAPPDATA%\ClipHive\key.dat`; only the same Windows account can unprotect it, so the database cannot be decrypted by another user or on another machine (roaming-profile setups excepted, where DPAPI keys legitimately follow the account)
+- **Keyed dedupe fingerprints** — duplicate detection uses HMAC-SHA256 under a key derived from the encryption key, never a bare hash of the plaintext, so the database contains nothing that confirms content guesses offline
+- **Password-manager aware** — content marked with the standard exclusion clipboard formats (`ExcludeClipboardContentFromMonitorProcessing`, `CanIncludeInClipboardHistory=0`, `Clipboard Viewer Ignore`) is never recorded
 - **Minimal attack surface** — no web server, no IPC server, no plugins, no scripting engine

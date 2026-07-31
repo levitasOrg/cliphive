@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Dedupe fingerprints are now keyed HMAC-SHA256, not plain SHA-256** — the old `content_hash` column stored an unsalted hash of the plaintext next to the ciphertext, which let anyone with the database file confirm guesses of clipboard contents offline. Existing rows are re-fingerprinted automatically on first launch (one-time migration).
+- **Password-manager copies are no longer recorded** — ClipHive now honors the standard exclusion clipboard formats (`ExcludeClipboardContentFromMonitorProcessing`, `CanIncludeInClipboardHistory=0`, `Clipboard Viewer Ignore`) used by KeePass, Bitwarden, and Windows itself.
+- **Legacy plaintext OCR text is re-encrypted** — image rows stored by v1.3.0 kept their OCR text unencrypted; the migration encrypts them, and plaintext values are no longer accepted on read.
+
+### Added
+- **Ignore lists** — `IgnoredApps` (process names) and `IgnorePatterns` (regexes) in `settings.json` exclude apps or content from capture.
+- **Source app tracking** — new items record which application they were copied from (used by `IgnoredApps`).
+- **Key-corruption recovery** — a corrupted `key.dat` no longer crashes on every launch; startup offers a key reset instead.
+- **Hotkey conflict warning** — if another app owns the configured hotkey, ClipHive says so (tray balloon) instead of silently doing nothing; the tray icon stays visible so the app remains reachable.
+
+### Fixed
+- **Paste as plain text no longer corrupts Unicode** — the ANSI round-trip that turned CJK/Cyrillic/emoji into `?` was replaced with a UnicodeText-only rewrite (which is what strips RTF/HTML).
+- **Pasting an item no longer reorders history** — ClipHive's own clipboard writes carry a private marker format the monitor skips deterministically, replacing the racy 50 ms timing flag (idea borrowed from Maccy).
+- **Image dedupe now fingerprints the full bytes** — the previous sampled fingerprint could silently drop distinct same-size images.
+- **Image search now covers the full OCR text**, not just the first 80 characters shown in the preview.
+- **Sidebar no longer flashes shut** when the hotkey keypress deactivates the window before it is ready (the Deactivated handler now honors the readiness guard).
+- **Auto-clear runs one minute after launch** (was: up to an hour of stale items), and an open sidebar refreshes after a purge instead of showing deleted items.
+- **Customized plain-text-paste hotkey survives the Settings dialog** — saving no longer resets unbound settings to defaults.
+- **Startup entry set by the installer is respected** — the app now syncs the "start with Windows" toggle with the actual registry state instead of silently deleting the installer's entry on first save.
+- Removed the forced full garbage collection on every sidebar close (paste-latency jank).
+- Shutdown no longer races in-flight storage writes or the auto-clear timer (both are now awaited briefly on exit).
+
+### Installer
+- **Per-user install by default** (`PrivilegesRequired=lowest`) — the previous admin-elevated install wrote the autostart entry, desktop icon, and data cleanup against the elevating admin's profile instead of the logged-in user's. Elevation is still available via dialog.
+- **Uninstall now asks before deleting your clipboard history and encryption key** (previously deleted silently).
+- Release builds tag the installer with the CI-passed version — a mismatched hardcoded version no longer breaks the release upload for future tags.
+
 ## [1.3.2] - 2026-04-15
 
 ### Added

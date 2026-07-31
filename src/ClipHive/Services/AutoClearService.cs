@@ -4,12 +4,14 @@ namespace ClipHive;
 /// Background service that periodically purges clipboard history according to the
 /// user's <see cref="AutoClearPolicy"/>.
 ///
-/// The timer fires every hour and calls
+/// The first tick fires one minute after startup (so stale items from a previous
+/// session don't linger for an hour), then hourly. Each pass calls
 /// <see cref="IStorageService.DeleteOlderThanAsync(DateTime, bool)"/> with a cutoff
 /// derived from the current policy. Pinned items are always preserved.
 /// </summary>
 public sealed class AutoClearService : IAutoClearService
 {
+    private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(1);
 
     private readonly IStorageService _storage;
@@ -17,6 +19,9 @@ public sealed class AutoClearService : IAutoClearService
 
     private System.Threading.Timer? _timer;
     private bool _disposed;
+
+    /// <inheritdoc />
+    public event EventHandler? Cleaned;
 
     public AutoClearService(IStorageService storage, ISettingsService settings)
     {
@@ -28,7 +33,7 @@ public sealed class AutoClearService : IAutoClearService
     }
 
     /// <summary>
-    /// Starts the background timer. The first tick fires after one hour.
+    /// Starts the background timer.
     /// Calling <see cref="Start"/> when already running is a no-op.
     /// </summary>
     public void Start()
@@ -39,20 +44,26 @@ public sealed class AutoClearService : IAutoClearService
             return; // already running
 
         _timer = new System.Threading.Timer(
-            callback: _ => _ = RunCleanupAsync(),
+            callback: _ => _ = RunCleanupSafeAsync(),
             state: null,
-            dueTime: CheckInterval,
+            dueTime: FirstCheckDelay,
             period: CheckInterval);
     }
 
     /// <summary>
-    /// Stops the background timer without disposing the service.
+    /// Stops the background timer, waiting for any in-flight callback to finish so
+    /// shutdown never disposes the storage out from under a running cleanup.
     /// </summary>
     public void Stop()
     {
-        _timer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
-        _timer?.Dispose();
+        var timer = _timer;
         _timer = null;
+        if (timer is null) return;
+
+        using var done = new System.Threading.ManualResetEvent(false);
+        // Timer.Dispose(WaitHandle) signals after the last queued callback returns.
+        if (timer.Dispose(done))
+            done.WaitOne(TimeSpan.FromSeconds(2));
     }
 
     /// <inheritdoc />
@@ -65,6 +76,22 @@ public sealed class AutoClearService : IAutoClearService
 
     // ── Internal ───────────────────────────────────────────────────────────────
 
+    private async Task RunCleanupSafeAsync()
+    {
+        try
+        {
+            await RunCleanupAsync().ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Storage disposed during shutdown — expected race, nothing to do.
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClipHive] Auto-clear pass failed: {ex.Message}");
+        }
+    }
+
     internal async Task RunCleanupAsync()
     {
         AppSettings settings = _settings.Load();
@@ -75,6 +102,9 @@ public sealed class AutoClearService : IAutoClearService
 
         DateTime cutoff = DateTime.UtcNow - window;
         await _storage.DeleteOlderThanAsync(cutoff, keepPinned: true).ConfigureAwait(false);
+
+        // Let the app refresh an open sidebar so purged items don't remain visible.
+        Cleaned?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>

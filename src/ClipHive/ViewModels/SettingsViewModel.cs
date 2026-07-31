@@ -132,9 +132,15 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     // ── Private Helpers ──────────────────────────────────────────────────────
 
+    // Full settings object as loaded — Save mutates only the fields this dialog
+    // edits, so settings the UI does not surface (plain-text hotkey, ignore lists)
+    // are preserved instead of silently reset to defaults.
+    private AppSettings _loaded = new();
+
     private void LoadFromService()
     {
         var s = _settingsService.Load();
+        _loaded = s;
         _hotkeyModifiers = s.HotkeyModifiers;
         _hotkeyVirtualKey = s.HotkeyVirtualKey;
         _autoClearPolicy = s.AutoClear;
@@ -144,22 +150,24 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         UpdateHotkeyDisplay();
     }
 
+    /// <summary>History size bounds; values outside are clamped on save
+    /// (0 or negative would silently disable purging entirely).</summary>
+    internal const int MinHistoryCount = 10;
+    internal const int MaxHistoryCountLimit = 10_000;
+
     private void ExecuteSave()
     {
         // Validation: require at least one modifier.
         if (_hotkeyModifiers == 0) return;
 
-        var updated = new AppSettings
-        {
-            HotkeyModifiers = _hotkeyModifiers,
-            HotkeyVirtualKey = _hotkeyVirtualKey,
-            AutoClear = _autoClearPolicy,
-            StartWithWindows = _startWithWindows,
-            MaxHistoryCount = _maxHistoryCount,
-            HideFromTray = _hideFromTray
-        };
+        _loaded.HotkeyModifiers = _hotkeyModifiers;
+        _loaded.HotkeyVirtualKey = _hotkeyVirtualKey;
+        _loaded.AutoClear = _autoClearPolicy;
+        _loaded.StartWithWindows = _startWithWindows;
+        _loaded.MaxHistoryCount = Math.Clamp(_maxHistoryCount, MinHistoryCount, MaxHistoryCountLimit);
+        _loaded.HideFromTray = _hideFromTray;
 
-        _settingsService.Save(updated);
+        _settingsService.Save(_loaded);
         SaveRequested?.Invoke(this, EventArgs.Empty);
     }
 

@@ -18,7 +18,7 @@
 - **Per-item delete** — Click the `×` button on any item to remove it instantly
 - **Pin items** — Click the pin icon (📌) on any item to keep it permanently at the top of the list; click again to unpin
 - **Auto-clear** — Optional automatic history purge: 2 hours, 3 days, 15 days, 1 month, or never
-- **Duplicate prevention** — Copying the same content twice bumps it to the top instead of creating a duplicate (SHA-256 hash check, no decryption overhead)
+- **Duplicate prevention** — Copying the same content twice bumps it to the top instead of creating a duplicate (keyed HMAC-SHA256 fingerprint over the full content, no decryption overhead)
 
 ### Smart Contextual Actions
 Each clipboard item detects its content type and surfaces instant actions:
@@ -28,7 +28,7 @@ Each clipboard item detects its content type and surfaces instant actions:
 
 ### Image Support
 - **Image thumbnails** — Screenshots and copied images appear as visual previews in the list
-- **Offline OCR** — Windows' built-in OCR engine (`Windows.Media.Ocr`) silently extracts text from images in the background; images are fully searchable by their text content without any cloud service or network call
+- **Offline OCR** — Windows' built-in OCR engine (`Windows.Media.Ocr`) silently extracts text from images in the background; images are fully searchable by everything the OCR engine extracted, without any cloud service or network call
 
 ### Code Viewer
 - Clipboard items detected as code show a "⌄ view" button
@@ -40,10 +40,12 @@ Each clipboard item detects its content type and surfaces instant actions:
 - Useful when copying from Word, browsers, or design tools and pasting into code editors or plain text fields
 
 ### Security & Privacy
-- **AES-256-GCM encryption at rest** — all history rows are encrypted; the database contains only base64 ciphertext
+- **AES-256-GCM encryption at rest** — all history rows are encrypted, including OCR-extracted image text; dedupe fingerprints are keyed HMACs, so the database confirms nothing about your clipboard contents
 - **DPAPI-protected key** — encryption key generated once, protected by Windows DPAPI (user scope), stored at `%LOCALAPPDATA%\ClipHive\key.dat`; key never leaves your machine or your Windows account
 - **Zero network calls** — `netstat -an` while running shows no outbound connections, ever
-- **Machine-bound data** — copying the database to another machine fails to decrypt (DPAPI user-scope isolation)
+- **User-bound data** — copying the database to another machine or user account fails to decrypt (DPAPI user-scope isolation)
+- **Password managers are never recorded** — ClipHive honors the standard exclusion clipboard formats (`ExcludeClipboardContentFromMonitorProcessing`, `CanIncludeInClipboardHistory`, `Clipboard Viewer Ignore`) that KeePass, Bitwarden, and Windows itself use to mark sensitive copies
+- **Ignore lists** — exclude specific apps (`IgnoredApps`) or content matching regex patterns (`IgnorePatterns`) via `settings.json`, e.g. `"^ghp_[A-Za-z0-9]+$"` to keep GitHub tokens out of history
 
 ### Windows Integration
 - **System tray** — lives quietly in your notification area; double-click or press the hotkey to open
@@ -80,7 +82,7 @@ Maccy is a great macOS app — but ClipHive is a **separate, Windows-native prod
 | **Image OCR search** | Yes — offline, via Windows.Media.Ocr | No |
 | **Contextual actions** | URL open, file reveal, hex colour swatch | No |
 | **Paste as plain text** | Yes (`Ctrl+Alt+V`) | Yes |
-| **Duplicate deduplication** | SHA-256 hash check (no decryption cost) | Yes |
+| **Duplicate deduplication** | Keyed HMAC-SHA256 fingerprint (no decryption cost) | Yes |
 | **Pin items** | Yes | Yes |
 | **Windows 11 Acrylic glass** | Native `DwmSetWindowAttribute` | n/a |
 | **Machine-bound encryption** | Yes (DPAPI user scope) | n/a |

@@ -6,6 +6,7 @@ namespace ClipHive;
 /// All Win32 P/Invoke declarations used by ClipHive services.
 /// No other file should contain DllImport or LibraryImport declarations.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage] // P/Invoke declarations only
 internal static class Win32
 {
     // ── Hotkey modifier constants ──────────────────────────────────────────────
@@ -89,6 +90,16 @@ internal static class Win32
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    // ── P/Invoke: clipboard-owner identification ─────────────────────────────
+
+    /// <summary>Returns the HWND of the window that last placed data on the clipboard.</summary>
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetClipboardOwner();
+
+    /// <summary>Retrieves the process id owning the given window.</summary>
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
     // ── DWM backdrop (Windows 11 Acrylic) ────────────────────────────────────
 
