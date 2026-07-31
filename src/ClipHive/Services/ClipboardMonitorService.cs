@@ -25,6 +25,7 @@ namespace ClipHive;
 /// <item>Content matching the user's ignore lists (<see cref="Filter"/>).</item>
 /// </list>
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage] // Win32 clipboard listener (HwndSource, WM_CLIPBOARDUPDATE) — desktop-only; filter logic lives in CaptureFilter, which is unit-tested
 public sealed class ClipboardMonitorService : IClipboardMonitorService
 {
     private readonly IPasteService _pasteService;

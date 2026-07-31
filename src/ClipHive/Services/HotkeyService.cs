@@ -6,6 +6,7 @@ namespace ClipHive;
 /// The service requires a window handle (HWND) that receives WM_HOTKEY messages.
 /// In production this is the hidden HwndSource window.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage] // RegisterHotKey P/Invoke — desktop-only
 public sealed class HotkeyService : IHotkeyService, IDisposable
 {
     private const int HotkeyId          = 9001; // main sidebar hotkey

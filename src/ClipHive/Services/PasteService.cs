@@ -15,6 +15,7 @@ namespace ClipHive;
 ///
 /// <see cref="IsPasting"/> remains as a cheap first-line suppression check.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage] // STA clipboard writes + SendInput — desktop-only
 public sealed class PasteService : IPasteService
 {
     private int _isPastingInt; // 0 = idle, 1 = pasting

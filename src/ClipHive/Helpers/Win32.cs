@@ -6,6 +6,7 @@ namespace ClipHive;
 /// All Win32 P/Invoke declarations used by ClipHive services.
 /// No other file should contain DllImport or LibraryImport declarations.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage] // P/Invoke declarations only
 internal static class Win32
 {
     // ── Hotkey modifier constants ──────────────────────────────────────────────

@@ -13,6 +13,7 @@ namespace ClipHive.Views;
 /// Code-behind for the Settings window.
 /// Handles hotkey capture (KeyPickerBox behaviour) and wires ViewModel events.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage] // WPF window code-behind: hotkey key capture UI — desktop-only
 public partial class SettingsWindow : Window
 {
     private SettingsViewModel? _viewModel;

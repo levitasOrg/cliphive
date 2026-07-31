@@ -12,6 +12,7 @@ namespace ClipHive;
 /// Application entry point — wires all services, owns the tray icon, and routes
 /// clipboard changes / hotkey presses to the SidebarViewModel.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage] // WPF application bootstrap: tray icon, HwndSource, MessageBox recovery — desktop-only
 public partial class App : System.Windows.Application
 {
     // ── Services ──────────────────────────────────────────────────────────────

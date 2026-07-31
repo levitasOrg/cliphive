@@ -6,6 +6,7 @@ namespace ClipHive;
 /// Manages the Windows startup registry entry for ClipHive.
 /// Reads/writes HKCU\Software\Microsoft\Windows\CurrentVersion\Run.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage] // HKCU registry access — machine-state side effects
 public static class StartupHelper
 {
     private const string RegistryKeyPath =

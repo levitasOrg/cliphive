@@ -13,6 +13,7 @@ namespace ClipHive.Views;
 /// All business logic lives in <see cref="SidebarViewModel"/>;
 /// this file handles keyboard navigation, window lifecycle, and click-outside dismissal.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage] // WPF window code-behind: HWND hooks, focus, DWM — desktop-only
 public partial class SidebarWindow : Window
 {
     private SidebarViewModel? _viewModel;

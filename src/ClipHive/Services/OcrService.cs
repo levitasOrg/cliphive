@@ -10,6 +10,7 @@ namespace ClipHive;
 /// Requires Windows 10 Build 17763 (1809) or later.
 /// Returns null when the engine is unavailable or no text is found.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage] // WinRT OCR engine — desktop-only
 internal static class OcrService
 {
     /// <summary>
