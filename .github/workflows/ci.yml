@@ -41,6 +41,27 @@ jobs:
           name: coverage-report
           path: coverage/html
 
+      # ── Installer compile check ─────────────────────────────────────────────
+      # ISCC otherwise only runs in the tag-triggered release workflow, so a
+      # broken ClipHive.iss would surface at release time. Compile it on every
+      # CI run with a throwaway version to catch script errors early (also
+      # verifies the /DMyAppVersion define wins over the in-script fallback).
+      - name: Publish installer payload
+        run: >
+          dotnet publish src/ClipHive/ClipHive.csproj
+          -c Release -r win-x64 --self-contained false
+          -o dist/release
+
+      - name: Compile installer script
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=0.0.0 installer\ClipHive.iss
+          if (-not (Test-Path "dist\ClipHive-0.0.0-Setup.exe")) {
+            Write-Error "Installer was not produced with the CI-passed version — the /DMyAppVersion define is being ignored."
+            exit 1
+          }
+
       - name: Check coverage threshold (80%)
         run: |
           python -c "
