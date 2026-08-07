@@ -69,6 +69,7 @@ jobs:
             dist/ClipHive-${{ env.VERSION }}-Standalone.exe
           generate_release_notes: true
           draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
           body: |
             ## Downloads
 
